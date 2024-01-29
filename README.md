@@ -14,11 +14,14 @@ SideShow is an AIR based FLV player. Based on [TempoLite](https://mariani.life/p
 - Video filters (negative, flip, soften, sharpen, brightness, scanlines)
 - Audio filters (swap channels)
 
-![Default UI](/assets/sideshow1.png)
+![Default UI](/assets/sideshow1.jpg)
+
 *Default UI*
 
 ![Player Controls](/assets/sideshow2.png)
+
 *Player Controls : Hover mouse on the top or bottom to reveal the controls while playing*
 
 ![Main Menu](/assets/sideshow3.png)
+
 *Main Menu : Right-click to access*
