@@ -1,12 +1,13 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no" ?><application xmlns="http://ns.adobe.com/air/application/1.0">
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<application xmlns="http://ns.adobe.com/air/application/2.0beta2">
 	<id>com.coursevector.SideShow</id>
-	<version>1.1.3</version>
+	<version>2.1.0</version>
 	<filename>SideShow</filename>
 	<name>Course Vector SideShow</name>
 	
 	<description>Sideshow is a standalone utility to play Adobe Flash Video (FLV and H.264 / MPEG-4) files with.</description>
 	
-	<copyright>Copyright (c) 2008 Course Vector</copyright>
+	<copyright>Copyright (c) 2009 Course Vector</copyright>
 	
 	<initialWindow>
 		  <content>SideShow.swf</content>
@@ -19,10 +20,10 @@
 	</initialWindow>
 	
 	<icon>
-		  
-		  
-		  
-		  
+		  <image128x128>icons/Sideshow_128.png</image128x128>
+		  <image48x48>icons/Sideshow_48.png</image48x48>
+		  <image32x32>icons/Sideshow_32.png</image32x32>
+		  <image16x16>icons/Sideshow_16.png</image16x16>
 	</icon>
 	
 	<customUpdateUI>false</customUpdateUI>
