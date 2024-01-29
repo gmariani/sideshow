@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file
@@ -11,13 +11,10 @@
 
 package cv.sideshow.view {
 	
-	import flash.display.NativeWindow;
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
+	import cv.util.ScaleUtil;
+	import cv.sideshow.Main;
 	
-	import gs.TweenLite;
-	import cv.sideshow.ApplicationFacade;
+	import com.greensock.TweenLite;
 	
 	import flash.display.BitmapData;
 	import flash.filters.BitmapFilter;
@@ -31,33 +28,34 @@ package cv.sideshow.view {
 	import flash.net.URLLoaderDataFormat; 
 	import flash.net.URLRequest; 
 	import flash.events.Event;
-	import cv.util.ScaleUtil;
+	import flash.display.NativeWindow;
 	
-	public class VideoMediator extends Mediator implements IMediator {
-		
-		public static const NAME:String = 'VideoMediator';
+	public class VideoMediator {
 		
 		public var origWidth:Number = 0;
 		public var origHeight:Number = 0;
+		public var isRatioLocked:Boolean = false;
 		
-		private var isRatioLocked:Boolean = false;
+		private var _screen:Video;
 		private var brightnessAmount:int = 0;
-		private var objFilters:Object = new Object();
-		private var brightSize:uint = 20;
+		private var objFilters:Object = {};
 		private var ratioWidth:Number;
 		private var ratioHeight:Number;
 		private var pbScanLines:Shader;
-		private var loader:URLLoader = new URLLoader();
 		
-		public function VideoMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
-			
+		private const BRIGHT_SIZE:uint = 20;
+		
+		public function VideoMediator(videoRef:Video) {
+			_screen = videoRef;
 			screen.smoothing = true;
 			screen.alpha = 0;
 			
+			var loader:URLLoader = new URLLoader();
             loader.dataFormat = URLLoaderDataFormat.BINARY; 
             loader.addEventListener(Event.COMPLETE, onLoadComplete); 
             loader.load(new URLRequest("scanLines.pbj"));
+			
+			Main.sendNotification(Main.SET_SCREEN, screen);
 		}
 		
 		//--------------------------------------
@@ -69,16 +67,17 @@ package cv.sideshow.view {
 		}
 		
 		public function get screen():Video {
-			return viewComponent as Video;
+			return _screen;
 		}
 		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
 		
-		public function brighten(dir:int):void {
-			brightnessAmount += (brightSize * dir);
+		public function brighten(dir:int):int {
+			brightnessAmount += (BRIGHT_SIZE * dir);
 			applyFilter(new ColorMatrixFilter(getBrightness(brightnessAmount)), "bright");
+			return brightnessAmount;
 		}
 		
 		public function flip(bool:Boolean):void {
@@ -107,7 +106,7 @@ package cv.sideshow.view {
 		
 		public function reset():void {
 			brightnessAmount = 0;
-			objFilters = new Object();
+			objFilters = {};
 			updateFilters();
 			flip(false);
 		}
@@ -139,117 +138,53 @@ package cv.sideshow.view {
 		public function validateVideo(o:Object):void {
 			origWidth = (o && o.hasOwnProperty("width")) ? o.width : screen.videoWidth || 340;
 			origHeight = (o && o.hasOwnProperty("height")) ? o.height : screen.videoHeight || 250;
-			sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO);
+			Main.sendNotification(Main.VIDEO_ASPECT_RATIO);
 		}
 		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.EXITING, 
-					ApplicationFacade.VIDEO_RESET_SIZE,
-					ApplicationFacade.VIDEO_SET_SIZE,
-					ApplicationFacade.VIDEO_ASPECT_RATIO,
-					ApplicationFacade.VIDEO_LOCK_RATIO,
-					ApplicationFacade.VIDEO_BRIGHTEN, 
-					ApplicationFacade.VIDEO_INVERT, 
-					ApplicationFacade.VIDEO_SOFTEN, 
-					ApplicationFacade.VIDEO_SHARPEN, 
-					ApplicationFacade.VIDEO_SCANLINES, 
-					ApplicationFacade.VIDEO_FLIP, 
-					ApplicationFacade.VIDEO_RESET];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			var newW:Number;
-			var newH:Number;
-			var ratio:Number;
-			var o:Object = note.getBody();
+		public function resetSize():void {
+			screen.y = 0;
+			screen.x = 0;
+			screen.width = origWidth = 340;
+			screen.height = origHeight = 250;
 			
-			switch (note.getName())	{
-				case ApplicationFacade.VIDEO_LOCK_RATIO :
-					isRatioLocked = note.getBody() as Boolean;
-					break;
-				case ApplicationFacade.VIDEO_RESET_SIZE :
-					screen.y = 0;
-					screen.x = 0;
-					screen.width = origWidth = 340;
-					screen.height = origHeight = 250;
-					
-					if (isRatioLocked) {
-						ScaleUtil.toAspectRatio(screen, ratioWidth, ratioHeight);
-						ScaleUtil.scaleHeight(screen, origWidth);
-						if (screen.height > origHeight) ScaleUtil.scaleWidth(screen, origHeight);
-					}
-					
-					sendNotification(ApplicationFacade.SET_SIZE, { width:origWidth, height:origHeight } );
-					break;
-				case ApplicationFacade.VIDEO_SET_SIZE :
-					newW = o.hasOwnProperty("width") ? o.width : origWidth;
-					newH = o.hasOwnProperty("height") ? o.height : origHeight;
-					var multiplier:Number = o.hasOwnProperty("multiplier") ? o.multiplier : 1;
-					var isFull:Boolean = o.hasOwnProperty("isFull") ? o.isFull : false;
-					newW *= multiplier;
-					newH *= multiplier;
-					
-					if (isFull) {
-						// Do nothing
-					} else {
-						screen.y = 0;
-						screen.x = 0;
-						screen.width = newW;
-						screen.height = newH;
-						
-						if (isRatioLocked) {
-							ScaleUtil.toAspectRatio(screen, ratioWidth, ratioHeight);
-							ScaleUtil.scaleHeight(screen, newW);
-							if (screen.height > newH) ScaleUtil.scaleWidth(screen, newH);
-						}
-					}
-					
-					sendNotification(ApplicationFacade.SET_SIZE, { width:screen.width, height:screen.height } );
-					break;
-				case ApplicationFacade.VIDEO_ASPECT_RATIO :
-					ratioWidth = o ? o.width : origWidth;
-					ratioHeight = o ? o.height : origHeight;
-					
-					sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { width:screen.width, height:screen.height } );
-					break;
-				case ApplicationFacade.VIDEO_BRIGHTEN :
-					brighten(note.getBody() as int);
-					sendNotification(ApplicationFacade.ON_VIDEO_BRIGHTEN, brightnessAmount);
-					break;
-				case ApplicationFacade.VIDEO_INVERT :
-					invert(note.getBody() as Boolean);
-					break;
-				case ApplicationFacade.VIDEO_SOFTEN :
-					soften(note.getBody() as Boolean);
-					break;
-				case ApplicationFacade.VIDEO_SHARPEN :
-					sharpen(note.getBody() as Boolean);
-					break;
-				case ApplicationFacade.VIDEO_SCANLINES :
-					scanLines(note.getBody() as Boolean);
-					break;
-				case ApplicationFacade.VIDEO_FLIP :
-					flip(note.getBody() as Boolean);
-					break;
-				case ApplicationFacade.VIDEO_RESET :
-					reset();
-					break;
-				case ApplicationFacade.EXITING :
-					if (ApplicationFacade.HAS_FILE) {
-						TweenLite.to(screen, .5, { alpha:0 } );
-					}
-					break;
+			if (isRatioLocked) {
+				ScaleUtil.toAspectRatio(screen, ratioWidth, ratioHeight);
+				ScaleUtil.scaleHeight(screen, origWidth);
+				if (screen.height > origHeight) ScaleUtil.scaleWidth(screen, origHeight);
 			}
 		}
 		
-		override public function initializeNotifier(key:String):void {
-			super.initializeNotifier(key);
+		public function setSize(width:Number = -1, height:Number = -1, multiplier:Number = 1, isFull:Boolean = false):void {
+			var newW:Number = !isNaN(width) ? width : origWidth;
+			var newH:Number = !isNaN(height) ? height : origHeight;
+			multiplier = isNaN(multiplier) ? 1 : multiplier;
+			newW *= multiplier;
+			newH *= multiplier;
 			
-			sendNotification(ApplicationFacade.SET_SCREEN, screen);
+			if (isFull) return;
+			
+			screen.y = 0;
+			screen.x = 0;
+			screen.width = newW;
+			screen.height = newH;
+			
+			if (isRatioLocked) {
+				ScaleUtil.toAspectRatio(screen, ratioWidth, ratioHeight);
+				ScaleUtil.scaleHeight(screen, newW);
+				if (screen.height > newH) ScaleUtil.scaleWidth(screen, newH);
+			}
+		}
+		
+		public function setAspectRatio(width:Number = -1, height:Number = -1):void {
+			ratioWidth = width != -1 ? width : origWidth;
+			ratioHeight = height != -1 ? height : origHeight;
+			
+			//Main.sendNotification(Main.SET_SIZE, { width:screen.width, height:screen.height } );
+			Main.sendNotification(Main.SET_SIZE, { width:ratioWidth, height:ratioHeight } );
+		}
+		
+		public function hide():void {
+			if (Main.HAS_FILE) TweenLite.to(screen, .5, { alpha:0 } );
 		}
 		
 		//--------------------------------------
@@ -291,7 +226,9 @@ package cv.sideshow.view {
 			return matrix;
 		}
 		
-		private function onLoadComplete(event:Event):void { 
+		private function onLoadComplete(event:Event):void {
+			var loader:URLLoader = event.currentTarget as URLLoader;
+			loader.removeEventListener(Event.COMPLETE, onLoadComplete); 
 			pbScanLines = new Shader(loader.data); 
 		}
 		
@@ -301,7 +238,7 @@ package cv.sideshow.view {
 		}
 		
 		private function updateFilters():void {
-			var arrFilters:Array = new Array();
+			var arrFilters:Array = [];
 			for (var i:String in objFilters) {
 				if (objFilters[i] != undefined) {
 					arrFilters.push(objFilters[i]);

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file
@@ -11,18 +11,13 @@
 
 package cv.sideshow.view {
 
+	import com.adobe.utils.DateUtil;
+	
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.events.NativeWindowBoundsEvent;
 	import flash.text.TextFormat;
 	import flash.utils.ByteArray;
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
-	
-	import cv.sideshow.ApplicationFacade;
-	import com.adobe.utils.DateUtil;
-	
 	import flash.display.NativeWindowInitOptions;
 	import flash.display.NativeWindowSystemChrome;
 	import flash.display.NativeWindowType;
@@ -33,18 +28,15 @@ package cv.sideshow.view {
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.filesystem.File;
+	
 	import fl.controls.Button;
 	import fl.controls.TextArea;
 	
-	// TODO: Prase MP3 tags
+	// TODO: Parse MP3 tags
 
-	public class MetaDataMediator extends Mediator implements IMediator {
-		
-		public static const NAME:String = 'MetaDataMediator';
+	public class MetaDataMediator extends MovieClip {
 		
 		private var mw:NativeWindow;
-		private var taMsg:TextArea;
-		private var btnOk:Button;
 		private var strTitle:String = "";
 		private var _addMiscTitle:Boolean = false;
 		private var _addMiscTitle2:Boolean = false;
@@ -67,14 +59,11 @@ package cv.sideshow.view {
 		"Symphony", "Booty Bass", "Primus", "Porn Groove", "Satire", "Slow Jam", "Club", "Tango", "Samba", 
 		"Folklore", "Ballad", "Power Ballad", "Rhythmic Soul", "Freestyle", "Duet", "Punk Rock", "Drum Solo", "A Capella", "Euro-House", "Dance Hall"];
 		
-		public function MetaDataMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
+		public function MetaDataMediator() {
 			
-			taMsg = root.getChildByName("taMsg") as TextArea;
 			var tf:TextFormat = new TextFormat("Helvetica LT Std");
 			taMsg.setStyle("textformat", tf);
 			
-			btnOk = root.getChildByName("btnOk") as Button;
 			btnOk.addEventListener(MouseEvent.CLICK, onClickOk);
 			
 			createWindow();
@@ -84,75 +73,14 @@ package cv.sideshow.view {
 		//  Properties
 		//--------------------------------------
 		
-		private function get root():MovieClip {
-			return viewComponent as MovieClip;
-		}
-		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
 		
-		public function setTitle(title:String = "Unknown"):void {
-			strTitle = title;
-			
-			taMsg.htmlText = "<b>-- File Name --</b><br>";
-			taMsg.htmlText += "<b>" + strTitle + "</b><br>";
-		}
-		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.METADATA, ApplicationFacade.METADATA_SHOW];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			switch(note.getName()) {
-				case ApplicationFacade.METADATA :
-					setMessage(note.getBody());
-					break;
-				case ApplicationFacade.METADATA_SHOW :
-					if (mw.closed) createWindow();
-					mw.activate();
-					mw.orderToFront();
-					mw.visible = true;
-					break;
-			}
-		}
-		
-		//--------------------------------------
-		//  Private
-		//--------------------------------------
-		
-		private function createWindow():void {
-			var winArgs:NativeWindowInitOptions = new NativeWindowInitOptions();
-			winArgs.maximizable = false;
-			winArgs.minimizable = true;
-			winArgs.resizable = true;
-			winArgs.type = NativeWindowType.NORMAL;
-			
-			mw = new NativeWindow(winArgs);
-			mw.title = "File Info";
-			mw.addEventListener(Event.RESIZE, onWindowResize);
-			mw.width = 300;
-			mw.height = 300;
-			mw.stage.align = StageAlign.TOP_LEFT;
-			mw.stage.scaleMode = StageScaleMode.NO_SCALE;
-			mw.stage.addChild(root);
-		}
-		
-		private function onWindowResize(e:NativeWindowBoundsEvent):void	{
-			taMsg.width = e.afterBounds.width - 9;
-			taMsg.height = e.afterBounds.height - 70;
-			btnOk.y = taMsg.height + 10;
-			btnOk.x = (taMsg.width / 2) - (btnOk.width / 2);
-		}
-		
 		//tags ID3 like tag information
 		//trackinfo   Array   	  	 An array of objects containing various infomation about all the tracks in a file.
 		//chapters  Array   	 Information about chapters in audiobooks.
-		private function setMessage(objData:Object):void {
+		public function setMessage(objData:Object):void {
 			var i:String;
 			var s:String;
 			var arr:Array;
@@ -679,6 +607,48 @@ package cv.sideshow.view {
 			}
 			
 			taMsg.validateNow();
+		}
+		
+		public function setTitle(title:String = "Unknown"):void {
+			strTitle = title;
+			
+			taMsg.htmlText = "<b>-- File Name --</b><br>";
+			taMsg.htmlText += "<b>" + strTitle + "</b><br>";
+		}
+		
+		public function show():void {
+			if (mw.closed) createWindow();
+			mw.activate();
+			mw.orderToFront();
+			mw.visible = true;
+		}
+		
+		//--------------------------------------
+		//  Private
+		//--------------------------------------
+		
+		private function createWindow():void {
+			var winArgs:NativeWindowInitOptions = new NativeWindowInitOptions();
+			winArgs.maximizable = false;
+			winArgs.minimizable = true;
+			winArgs.resizable = true;
+			winArgs.type = NativeWindowType.NORMAL;
+			
+			mw = new NativeWindow(winArgs);
+			mw.title = "File Info";
+			mw.addEventListener(Event.RESIZE, onWindowResize);
+			mw.width = 300;
+			mw.height = 300;
+			mw.stage.align = StageAlign.TOP_LEFT;
+			mw.stage.scaleMode = StageScaleMode.NO_SCALE;
+			mw.stage.addChild(this);
+		}
+		
+		private function onWindowResize(e:NativeWindowBoundsEvent):void	{
+			taMsg.width = e.afterBounds.width - 9;
+			taMsg.height = e.afterBounds.height - 70;
+			btnOk.y = taMsg.height + 10;
+			btnOk.x = (taMsg.width / 2) - (btnOk.width / 2);
 		}
 		
 		private function addMiscTitle():String {

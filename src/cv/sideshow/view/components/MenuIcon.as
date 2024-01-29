@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file

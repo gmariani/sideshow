@@ -1,10 +1,17 @@
-﻿package cv.sideshow.view {
+﻿////////////////////////////////////////////////////////////////////////////////
+//
+//  COURSE VECTOR
+//  Copyright 2011 Course Vector
+//  All Rights Reserved.
+//
+//  NOTICE: Course Vector permits you to use, modify, and distribute this file
+//  in accordance with the terms of the license agreement accompanying it.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+package cv.sideshow.view {
 	
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
-	
-	import cv.sideshow.ApplicationFacade;
+	import cv.sideshow.Main;
 	
 	import fl.controls.Button;
 	import flash.display.NativeWindowInitOptions;
@@ -17,17 +24,12 @@
 	import flash.text.TextField;
 	import flash.text.TextFormat;
 	
-	public class CustomAspectMediator extends Mediator implements IMediator {
+	public class CustomAspectMediator extends MovieClip {
 		
-		public static const NAME:String = 'CustomAspectMediator';
-		
-		private var txtInput:TextField;
 		private var w:NativeWindow;
 		
-		public function CustomAspectMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
+		public function CustomAspectMediator() {
 			
-			txtInput = root.getChildByName("txtInput") as TextField;
 			txtInput.restrict = "0123456789:";
 			txtInput.border = true;
 			txtInput.borderColor = 0x888D90;
@@ -35,10 +37,8 @@
 			tf.indent = 5;
 			txtInput.defaultTextFormat = tf;
 			
-			var btnOk:Button = root.getChildByName("btnOk") as Button;
 			btnOk.addEventListener(MouseEvent.CLICK, onClickOk);
 			
-			var btnCancel:Button = root.getChildByName("btnCancel") as Button;
 			btnCancel.addEventListener(MouseEvent.CLICK, onClickCancel);
 			
 			createWindow();
@@ -48,31 +48,15 @@
 		//  Properties
 		//--------------------------------------
 		
-		private function get root():MovieClip {
-			return viewComponent as MovieClip;
-		}
-		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
 		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.CUSTOM_SHOW];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			switch(note.getName()) {
-				case ApplicationFacade.CUSTOM_SHOW :
-					if (w.closed) createWindow();
-					w.activate();
-					w.orderToFront();
-					w.visible = true;
-					break;
-			}
+		public function show():void {
+			if (w.closed) createWindow();
+			w.activate();
+			w.orderToFront();
+			w.visible = true;
 		}
 		
 		//--------------------------------------
@@ -83,9 +67,9 @@
 			var regex:RegExp = /([0-9]+):([0-9]+)/g;
 			var o:Object = regex.exec(txtInput.text);
 			if (o) {
-				sendNotification(ApplicationFacade.SELECT_CUSTOM);
-				sendNotification(ApplicationFacade.VIDEO_LOCK_RATIO, true);
-				sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO, {width:o[1], height:o[2]});
+				Main.sendNotification(Main.SELECT_CUSTOM);
+				Main.sendNotification(Main.VIDEO_LOCK_RATIO, true);
+				Main.sendNotification(Main.VIDEO_ASPECT_RATIO, {width:o[1], height:o[2]});
 			}
 			onClickCancel();
 		}
@@ -107,7 +91,7 @@
 			w.height = 130;
 			w.stage.align = StageAlign.TOP_LEFT;
 			w.stage.scaleMode = StageScaleMode.NO_SCALE;
-			w.stage.addChild(root);
+			w.stage.addChild(this);
 		}
 	}
 }

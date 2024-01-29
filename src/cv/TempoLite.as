@@ -432,6 +432,11 @@ package cv {
 		 */
 		public function get list():PlayList { return _list }
 		
+		/**
+		 * Retrieve the current shuffled playlist in <code>PlayList</code> format (enhanced array).
+		 */
+		public function get listShuffled():PlayList { return _listShuffled }
+		
 		/** 
 		 * Sets whether repeat is enabled, or which type of repeat is enabled.
 		 * Accepted values are:
@@ -524,6 +529,7 @@ package cv {
 			var n:Number = isNaN(Number(time)) ? 0 : Number(time);
 			if(_cM) {
 				if (time is String) n += _cM.timeCurrent / 1000;
+				if (time is String) n *= 1000;
 				_cM.seek(n);
 			}
 		}

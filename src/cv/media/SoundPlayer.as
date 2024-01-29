@@ -486,7 +486,7 @@ package cv.media {
 		public function pause(b:Boolean = true):void {
 			if(b) {
 				stop();
-				pausePosition = sc.position;
+				pausePosition = sc ? sc.position : 0;
 			} else {
 				play(pausePosition);
 			}

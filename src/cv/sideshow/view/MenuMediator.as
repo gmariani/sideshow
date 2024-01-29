@@ -1,12 +1,19 @@
-﻿package cv.sideshow.view {
+﻿////////////////////////////////////////////////////////////////////////////////
+//
+//  COURSE VECTOR
+//  Copyright 2011 Course Vector
+//  All Rights Reserved.
+//
+//  NOTICE: Course Vector permits you to use, modify, and distribute this file
+//  in accordance with the terms of the license agreement accompanying it.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+package cv.sideshow.view {
 	
-	import cv.sideshow.ApplicationFacade;
+	import cv.sideshow.Main;
+	
 	import flash.geom.Rectangle;
-	
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
-	
 	import flash.desktop.DockIcon;
 	import flash.desktop.NativeApplication;
 	import flash.desktop.SystemTrayIcon;
@@ -24,17 +31,16 @@
 	import flash.geom.Point;
 	import flash.ui.Keyboard;
 	
-	public class MenuMediator extends Mediator implements IMediator {
-		
-		public static const NAME:String = 'MenuMediator';
+	public class MenuMediator {
 		
 		private var navContextMenu:NativeMenu;
 		private var rootContextMenu:NativeMenu;
 		private var dictMenuItems:Dictionary = new Dictionary();
 		private var app:NativeApplication = NativeApplication.nativeApplication;
+		private var win:NativeWindow;
 		
-		public function MenuMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
+		public function MenuMediator(stageRef:Stage) {
+			win = stageRef.nativeWindow;
 			
 			navContextMenu = createContextMenu();
 			rootContextMenu = createRootMenu();
@@ -54,7 +60,7 @@
 				SystemTrayIcon(app.icon).menu = rootContextMenu;
 			}
 			
-			stage.addEventListener(KeyboardEvent.KEY_DOWN, stageHandler);
+			stageRef.addEventListener(KeyboardEvent.KEY_DOWN, stageHandler);
 			win.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGE, onWindowDisplay);
 		}
 		
@@ -62,25 +68,9 @@
 		//  Properties
 		//--------------------------------------
 		
-		private function get win():NativeWindow {
-			return stage.nativeWindow;
-		}
-		
-		private function get stage():Stage {
-			return root.stage;
-		}
-		
-		private function get root():MovieClip {
-			return viewComponent as MovieClip;
-		}
-		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
-		
-		public function setSeeThru(value:Boolean):void {
-			dictMenuItems["See-thru window"].enabled = value;
-		}
 		
 		public function setHasFile(b:Boolean):void {
 			dictMenuItems["File Info"].enabled = b;
@@ -97,64 +87,80 @@
 		
 		public function validateVideo(o:Object):void {
 			if (dictMenuItems["Half size"].checked) {
-				sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:0.5 } );
+				Main.sendNotification(Main.SET_SIZE, { multiplier:0.5 } );
 			} else if (dictMenuItems["Normal size"].checked) {
-				sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:1 } );
+				Main.sendNotification(Main.SET_SIZE, { multiplier:1 } );
 			} else if (dictMenuItems["Double size"].checked) {
-				sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:2 } );
-			} else if (dictMenuItems["Fit to Screen"].checked) {
-				var pt:Point = NativeWindow.systemMaxSize;
-				sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { width:pt.x, height:pt.y } );
+				Main.sendNotification(Main.SET_SIZE, { multiplier:2 } );
 			} else {
-				sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:1 } );
+				Main.sendNotification(Main.SET_SIZE, { multiplier:1 } );
 			}
 		}
 		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.MENU_SHOW, 
-					ApplicationFacade.ON_VIDEO_BRIGHTEN, 
-					ApplicationFacade.ON_TOGGLE_FULL,
-					ApplicationFacade.SELECT_CUSTOM,
-					ApplicationFacade.LOAD_COMPLETE];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			switch (note.getName())	{
-				case ApplicationFacade.MENU_SHOW :
-					var o:Object = note.getBody();
-					navContextMenu.display(o.stage, o.stageX, o.stageY);
-					break;
-				case ApplicationFacade.ON_TOGGLE_FULL :
-					dictMenuItems["FullScreen mode"].checked = note.getBody() as Boolean;
-					break;
-				case ApplicationFacade.ON_VIDEO_BRIGHTEN :
-					var brightnessAmount:int = note.getBody() as int;
-					if (brightnessAmount > 1) {
-						dictMenuItems["Brightness Down"].checked = false;
-						dictMenuItems["Brightness Up"].checked = true;
-					} else if (brightnessAmount == 0) {
-						dictMenuItems["Brightness Down"].checked = false;
-						dictMenuItems["Brightness Up"].checked = false;
-					} else if (brightnessAmount < 0) {
-						dictMenuItems["Brightness Down"].checked = true;
-						dictMenuItems["Brightness Up"].checked = false;
-					}
-					break;
-				case ApplicationFacade.SELECT_CUSTOM :
-					aspectHandler(null, "Custom aspect ratio");
-					break;
-				case ApplicationFacade.LOAD_COMPLETE :
-					dictMenuItems["Save As..."].enabled = true;
-					break;
+		public function updateBrightness(brightnessAmount:int):void {
+			if (brightnessAmount > 1) {
+				dictMenuItems["Brightness Down"].checked = false;
+				dictMenuItems["Brightness Up"].checked = true;
+			} else if (brightnessAmount == 0) {
+				dictMenuItems["Brightness Down"].checked = false;
+				dictMenuItems["Brightness Up"].checked = false;
+			} else if (brightnessAmount < 0) {
+				dictMenuItems["Brightness Down"].checked = true;
+				dictMenuItems["Brightness Up"].checked = false;
 			}
 		}
 		
-		override public function initializeNotifier(key:String):void {
-			super.initializeNotifier(key);
+		/* TODO: Make it so it actually locks to these ratios */
+		public function aspectHandler(e:Event = null, label:String = ""):void {
+			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
+			dictMenuItems["Original (0)"].checked = false;
+			dictMenuItems["TV 4:3 (1)"].checked = false;
+			dictMenuItems["Wide 16:9 (2)"].checked = false;
+			dictMenuItems["Same with Desktop (3)"].checked = false;
+			dictMenuItems["Free ratio"].checked = false;
+			item.checked = true;
+			
+			switch(item.label) {
+				case "Original (0)" :
+					Main.sendNotification(Main.VIDEO_LOCK_RATIO, true);
+					Main.sendNotification(Main.VIDEO_ASPECT_RATIO);
+					break;
+				case "TV 4:3 (1)" :
+					Main.sendNotification(Main.VIDEO_LOCK_RATIO, true);
+					Main.sendNotification(Main.VIDEO_ASPECT_RATIO, { width:4, height:3 } );
+					break;
+				case "Wide 16:9 (2)" :
+					Main.sendNotification(Main.VIDEO_LOCK_RATIO, true);
+					Main.sendNotification(Main.VIDEO_ASPECT_RATIO, { width:16, height:9 } );
+					break;
+				case "Same with Desktop (3)" :
+					var bnds:Rectangle = getCurrentScreen().visibleBounds;
+					Main.sendNotification(Main.VIDEO_LOCK_RATIO, true);
+					Main.sendNotification(Main.VIDEO_ASPECT_RATIO, { width:bnds.width, height:bnds.height } );
+					break;
+				case "Custom aspect ratio" :
+					// Here to control checks
+					break;
+				case "Free ratio" :
+					Main.sendNotification(Main.VIDEO_LOCK_RATIO, false);
+					break;
+			}			
+		}
+		
+		public function show(stageRef:Stage, stageX:Number, stageY:Number):void {
+			navContextMenu.display(stageRef, stageX, stageY);
+		}
+		
+		public function setSaveAs(bool:Boolean):void {
+			dictMenuItems["Save As..."].enabled = bool;
+		}
+		
+		public function setFullScreenMode(bool:Boolean):void {
+			dictMenuItems["FullScreen mode"].checked = bool;
+		}
+		
+		public function setMute(bool:Boolean):void {
+			dictMenuItems["Mute"].checked = bool;
 		}
 		
 		//--------------------------------------
@@ -190,7 +196,6 @@
 			return nm;
 		}
 		
-		/* TESTED */
 		private function createAudioMenu():NativeMenu {
 			var nm:NativeMenu = new NativeMenu();
 			
@@ -218,21 +223,18 @@
 			nm.addSubmenu(createVideoMenu(), "Video filters");
 			nm.addSubmenu(createAudioMenu(), "Audio filters");
 			nm.addItem(new NativeMenuItem("", true));
-			addItem(nm, "Maintain size", contextHandler, "`", [Keyboard.ALTERNATE]);
 			addItem(nm, "Half size", sizeHandler, "1", [Keyboard.ALTERNATE]);
 			addItem(nm, "Normal size", sizeHandler, "2", [Keyboard.ALTERNATE], -1, true);
 			addItem(nm, "Double size", sizeHandler, "3", [Keyboard.ALTERNATE]);
-			addItem(nm, "Fit to Screen", sizeHandler, "4", [Keyboard.ALTERNATE]);
 			addItem(nm, "FullScreen mode", contextHandler, "enter", [Keyboard.ALTERNATE], 0);
-			addItem(nm, "Maximized mode", contextHandler, "ENTER", null, 8);
+			addItem(nm, "Maximized mode", contextHandler, "enter", null, 8);
 			nm.addItem(new NativeMenuItem("", true));
 			addItem(nm, "Exit", contextHandler, "f4", [Keyboard.ALTERNATE], 1);
-			addItem(nm, "Sideshow - v" + ApplicationFacade.VERSION, contextHandler);
+			addItem(nm, "Sideshow - v" + Main.VERSION, contextHandler);
 			
 			return nm;
 		}
 		
-		/* TESTED */
 		private function createControlMenu():NativeMenu {
 			var nm:NativeMenu = new NativeMenu();
 			
@@ -242,8 +244,8 @@
 			addItem(nm, "Shrink Screen", controlHandler, "-");
 			nm.addItem(new NativeMenuItem("", true));
 			addItem(nm, "See-thru window", controlHandler, "a");
-			addItem(nm, "Always on top", controlHandler, "T");
-			addItem(nm, "Always on top while playing", controlHandler, "T", null, -1, true);
+			addItem(nm, "Always on top", controlHandler, "t");
+			addItem(nm, "Always on top while playing", controlHandler, "t", null, -1, true);
 			nm.addItem(new NativeMenuItem("", true));
 			addItem(nm, "Logo Bounce Effect", controlHandler, "", null, -1, true);
 			
@@ -256,14 +258,14 @@
 			addItem(nm, "Play/Pause", playbackHandler, "space", []);
 			addItem(nm, "Stop", playbackHandler, "v", []);
 			nm.addItem(new NativeMenuItem("", true));
-			addItem(nm, "Previous Track", playbackHandler);
-			addItem(nm, "Next Track", playbackHandler);
+			addItem(nm, "Previous Track", playbackHandler, "pgup", []);
+			addItem(nm, "Next Track", playbackHandler, "pgdn", []);
 			addItem(nm, "Simple Playlist", playbackHandler);
 			nm.addItem(new NativeMenuItem("", true));
 			addItem(nm, "Rewind 30 Seconds", playbackHandler, "left", [Keyboard.SHIFT]);
 			addItem(nm, "Forward 30 Seconds", playbackHandler, "right", [Keyboard.SHIFT]);
-			addItem(nm, "Rewind 1 Minute", playbackHandler, "LEFT", [Keyboard.CONTROL]);
-			addItem(nm, "Forward 1 Minute", playbackHandler, "RIGHT", [Keyboard.CONTROL]);
+			addItem(nm, "Rewind 1 Minute", playbackHandler, "left", [Keyboard.CONTROL]);
+			addItem(nm, "Forward 1 Minute", playbackHandler, "right", [Keyboard.CONTROL]);
 			nm.addItem(new NativeMenuItem("", true));
 			addItem(nm, "Jump to Head", playbackHandler, "home", [Keyboard.CONTROL]);
 			addItem(nm, "Jump to Half", playbackHandler);
@@ -283,7 +285,6 @@
 			addItem(menu, "Restore", rootHandler);
 			addItem(menu, "Minimize", rootHandler);
 			addItem(menu, "Maximize", rootHandler);
-			addItem(menu, "Maximize", rootHandler);
 			menu.addItem(new NativeMenuItem("", true));
 			menu.addSubmenu(navContextMenu, "SideShow Menu");
 			menu.addItem(new NativeMenuItem("", true));
@@ -292,7 +293,6 @@
 			return menu;
 		}
 		
-		/* TESTED */
 		private function createVideoMenu():NativeMenu {
 			var nm:NativeMenu = new NativeMenu();
 			
@@ -303,7 +303,7 @@
 			addItem(nm, "Soften", videoHandler, "f2");
 			addItem(nm, "Sharpen", videoHandler, "f3");
 			addItem(nm, "Scanlines", videoHandler, "f8");
-			addItem(nm, "Flip (troubleshoot)", videoHandler, "f11");
+			addItem(nm, "Flip", videoHandler, "f11");
 			nm.addItem(new NativeMenuItem("", true));
 			addItem(nm, "Discard Settings", videoHandler, "bksp");
 			
@@ -311,69 +311,32 @@
 		}
 		
 		private function customHandler(e:Event):void {
-			sendNotification(ApplicationFacade.CUSTOM_SHOW);
-		}
-		
-		private function aspectHandler(e:Event = null, label:String = ""):void {
-			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
-			dictMenuItems["Original (0)"].checked = false;
-			dictMenuItems["TV 4:3 (1)"].checked = false;
-			dictMenuItems["Wide 16:9 (2)"].checked = false;
-			dictMenuItems["Same with Desktop (3)"].checked = false;
-			dictMenuItems["Free ratio"].checked = false;
-			item.checked = true;
-			
-			switch(item.label) {
-				case "Original (0)" :
-					sendNotification(ApplicationFacade.VIDEO_LOCK_RATIO, true);
-					sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO);
-					break;
-				case "TV 4:3 (1)" :
-					sendNotification(ApplicationFacade.VIDEO_LOCK_RATIO, true);
-					sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO, { width:4, height:3 } );
-					break;
-				case "Wide 16:9 (2)" :
-					sendNotification(ApplicationFacade.VIDEO_LOCK_RATIO, true);
-					sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO, { width:16, height:9 } );
-					break;
-				case "Same with Desktop (3)" :
-					var bnds:Rectangle = getCurrentScreen().bounds;
-					sendNotification(ApplicationFacade.VIDEO_LOCK_RATIO, true);
-					sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO, { width:bnds.width, height:bnds.height } );
-					break;
-				case "Custom aspect ratio" :
-					// Here to control checks
-					break;
-				case "Free ratio" :
-					sendNotification(ApplicationFacade.VIDEO_LOCK_RATIO, false);
-					break;
-			}			
+			Main.sendNotification(Main.CUSTOM_SHOW);
 		}
 		
 		private function getCurrentScreen():Screen {
 			return Screen.getScreensForRectangle(win.bounds)[0];
 		}
 		
-		/* TESTED */
 		private function audioHandler(e:Event = null, label:String = ""):void {
 			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
 			switch(item.label) {
 				case "Make it Smaller" :
 				case "Make it Louder" :
 					var dir:int = (item == dictMenuItems["Make it Louder"]) ? 1 : -1;
-					sendNotification(ApplicationFacade.CONTROL_VOLUME_INCREMENT, dir);
+					Main.sendNotification(Main.CONTROL_VOLUME_INCREMENT, dir);
 					break;
 				case "Swap channels" :
 					if (item.checked) {
-						sendNotification(ApplicationFacade.CONTROL_SWAP_CHANNELS, false);
+						Main.sendNotification(Main.CONTROL_SWAP_CHANNELS, false);
 					} else {
-						sendNotification(ApplicationFacade.CONTROL_SWAP_CHANNELS, true);
+						Main.sendNotification(Main.CONTROL_SWAP_CHANNELS, true);
 					}
 					item.checked = !item.checked;
 					break;
 				case "Discard Settings" :
-					sendNotification(ApplicationFacade.CONTROL_VOLUME, 0.5);
-					sendNotification(ApplicationFacade.CONTROL_SWAP_CHANNELS, false);
+					Main.sendNotification(Main.CONTROL_VOLUME, 0.5);
+					Main.sendNotification(Main.CONTROL_SWAP_CHANNELS, false);
 					break;
 			}			
 		}
@@ -382,69 +345,63 @@
 			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
 			switch(item.label) {
 				case "Open..." :
-					sendNotification(ApplicationFacade.OPEN);
+					Main.sendNotification(Main.OPEN);
 					break;
 				case "Close" :
-					sendNotification(ApplicationFacade.CLOSE_FILE);
+					Main.sendNotification(Main.CLOSE_FILE);
 					break;
 				case "Save As..." :
-					sendNotification(ApplicationFacade.SAVE);
+					Main.sendNotification(Main.SAVE);
 					break;
 				case "Save ScreenShot..." :
-					sendNotification(ApplicationFacade.SAVE_SS);
+					Main.sendNotification(Main.SAVE_SS);
 					break;
 				case "File Info" :
-					sendNotification(ApplicationFacade.METADATA_SHOW);
-					break;
-				case "Maintain size" :
-					sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO);
-					item.checked = true;
+					Main.sendNotification(Main.METADATA_SHOW);
 					break;
 				case "FullScreen mode" :
-					if (item.checked) toggleMaximized();
-					sendNotification(ApplicationFacade.TOGGLE_FULL);
+					if (dictMenuItems['Maximized mode'].checked) toggleMaximized();
+					Main.sendNotification(Main.TOGGLE_FULL);
 					break;
 				case "Maximized mode" :
-					if (item.checked) sendNotification(ApplicationFacade.TOGGLE_FULL);
+					if (dictMenuItems['FullScreen mode'].checked) Main.sendNotification(Main.TOGGLE_FULL);
 					toggleMaximized();
 					break;
 				case "Exit" :
-				case "Exit2" :
-					sendNotification(ApplicationFacade.EXITING);
+					Main.sendNotification(Main.EXITING);
 					break;
-				case "Sideshow - v" + ApplicationFacade.VERSION :
-					sendNotification(ApplicationFacade.ABOUT_SHOW);
+				case "Sideshow - v" + Main.VERSION :
+					Main.sendNotification(Main.ABOUT_SHOW);
 					break;
 			}
 		}
 		
-		/* TESTED */
 		private function controlHandler(e:Event = null, label:String = ""):void {
 			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
 			switch(item.label) {
 				case "Logo Bounce Effect" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.LOGO_BOUNCE, item.checked);
+					Main.sendNotification(Main.LOGO_BOUNCE, item.checked);
 					break;
 				case "Grow Screen" :
-					sendNotification(ApplicationFacade.GROW, 1);
+					Main.sendNotification(Main.GROW, 1);
 					break;
 				case "Shrink Screen" :
-					sendNotification(ApplicationFacade.GROW, -1);
+					Main.sendNotification(Main.GROW, -1);
 					break;
 				case "See-thru window" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.UPDATE, {alpha:(item.checked) ? .5 : 1});
+					Main.sendNotification(Main.UPDATE, {alpha:(item.checked) ? 0.5 : 1});
 					break;
 				case "Always on top" :
 					item.checked = !item.checked;
 					dictMenuItems["Always on top while playing"].checked = false;
-					sendNotification(ApplicationFacade.TOGGLE_ON_TOP, {toggle:item.checked, whilePlaying:false});
+					Main.sendNotification(Main.TOGGLE_ON_TOP, {toggle:item.checked, whilePlaying:false});
 					break;
 				case "Always on top while playing" :
 					item.checked = !item.checked;
 					dictMenuItems["Always on top"].checked = false;
-					sendNotification(ApplicationFacade.TOGGLE_ON_TOP, {toggle:false, whilePlaying:item.checked});
+					Main.sendNotification(Main.TOGGLE_ON_TOP, {toggle:false, whilePlaying:item.checked});
 					break;
 			}
 		}
@@ -453,52 +410,52 @@
 			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
 			switch(item.label) {
 				case "Play/Pause" :
-					sendNotification(ApplicationFacade.CONTROL_PAUSE_TOGGLE);
+					Main.sendNotification(Main.CONTROL_PAUSE_TOGGLE);
 					break;
 				case "Stop" :
-					sendNotification(ApplicationFacade.CONTROL_STOP);
+					Main.sendNotification(Main.CONTROL_STOP);
 					break;
 				case "Previous Track" :
-					sendNotification(ApplicationFacade.CONTROL_PREVIOUS);
+					Main.sendNotification(Main.CONTROL_PREVIOUS);
 					break;
 				case "Next Track" :
-					sendNotification(ApplicationFacade.CONTROL_NEXT);
+					Main.sendNotification(Main.CONTROL_NEXT);
 					break;
 				case "Simple Playlist" :
-					sendNotification(ApplicationFacade.PLAYLIST_SHOW);
+					Main.sendNotification(Main.PLAYLIST_SHOW);
 					break;
 				case "Rewind 30 Seconds" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK_RELATIVE, -30);
+					Main.sendNotification(Main.CONTROL_SEEK_RELATIVE, -30);
 					break;
 				case "Forward 30 Seconds" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK_RELATIVE, 30);
+					Main.sendNotification(Main.CONTROL_SEEK_RELATIVE, 30);
 					break;
 				case "Rewind 1 Minute" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK_RELATIVE, -60);
+					Main.sendNotification(Main.CONTROL_SEEK_RELATIVE, -60);
 					break;
 				case "Forward 1 Minute" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK_RELATIVE, 60);
+					Main.sendNotification(Main.CONTROL_SEEK_RELATIVE, 60);
 					break;
 				case "Jump to Head" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK, .01);
+					Main.sendNotification(Main.CONTROL_SEEK, 0);
 					break;
 				case "Jump to Half" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK, .5);
+					Main.sendNotification(Main.CONTROL_SEEK, .5);
 					break;
-				case "Jump to  End" :
-					sendNotification(ApplicationFacade.CONTROL_SEEK, .99);
+				case "Jump to End" :
+					Main.sendNotification(Main.CONTROL_SEEK, 1);
 					break;
 				case "Repeat" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.CONTROL_REPEAT, (item.checked) ? "track" : "none");
+					Main.sendNotification(Main.CONTROL_REPEAT, (item.checked) ? "track" : "none");
 					break;
 				case "Shuffle" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.CONTROL_SHUFFLE, item.checked);
+					Main.sendNotification(Main.CONTROL_SHUFFLE, item.checked);
 					break;
 				case "Mute" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.CONTROL_MUTE, item.checked);
+					Main.sendNotification(Main.CONTROL_MUTE, item.checked);
 					break;
 			}
 		}
@@ -515,8 +472,8 @@
 				case "Minimize" :
 					win.minimize();
 					break;
-				case "Close" :
-					sendNotification(ApplicationFacade.EXITING);
+				case "Exit" :
+					Main.sendNotification(Main.EXITING);
 					break;
 			}
 		}
@@ -526,22 +483,17 @@
 			dictMenuItems["Half size"].checked = false;
 			dictMenuItems["Normal size"].checked = false;
 			dictMenuItems["Double size"].checked = false;
-			dictMenuItems["Fit to Screen"].checked = false;
 			item.checked = true;
 			
-			switch(e.target.label) {
+			switch(item.label) {
 				case "Half size" :
-					sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:0.5 } );
+					Main.sendNotification(Main.SET_SIZE, { multiplier:0.5 } );
 					break;
 				case "Normal size" :
-					sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:1 } );
+					Main.sendNotification(Main.SET_SIZE, { multiplier:1 } );
 					break;
 				case "Double size" :
-					sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { multiplier:2 } );
-					break;
-				case "Fit to Screen" :
-					var pt:Point = NativeWindow.systemMaxSize;
-					sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { width:pt.x, height:pt.y } );
+					Main.sendNotification(Main.SET_SIZE, { multiplier:2 } );
 					break;
 			}
 		}
@@ -563,9 +515,6 @@
 				case Keyboard.I :
 					if (e.ctrlKey) contextHandler(null, "File Info");
 					break;
-				case Keyboard.BACKQUOTE :
-					if (e.altKey) contextHandler(null, "Maintain size");
-					break;
 				case Keyboard.NUMBER_1 :
 					if (e.altKey) sizeHandler(null, "Half size");
 					break;
@@ -574,9 +523,6 @@
 					break;
 				case Keyboard.NUMBER_3 :
 					if (e.altKey) sizeHandler(null, "Double size");
-					break;
-				case Keyboard.NUMBER_4 :
-					if (e.altKey) sizeHandler(null, "Fit to Screen");
 					break;
 				case Keyboard.ENTER :
 					if (e.altKey) {
@@ -642,6 +588,8 @@
 						videoHandler(null, "Brightness Down");
 					} else if (e.shiftKey) {
 						audioHandler(null, "Make it Smaller");
+					} else {
+						playbackHandler(null, "Next Track");
 					}
 					break;
 				case Keyboard.PAGE_UP :
@@ -649,6 +597,8 @@
 						videoHandler(null, "Brightness Up");
 					} else if (e.shiftKey) {
 						audioHandler(null, "Make it Louder");
+					} else {
+						playbackHandler(null, "Previous Track");
 					}
 					break;
 				case Keyboard.F1 :
@@ -664,7 +614,7 @@
 					if (e.altKey) contextHandler(null, "Exit");
 					break;
 				case Keyboard.F11 :
-					if (e.ctrlKey) videoHandler(null, "Flip (troubleshoot)");
+					if (e.ctrlKey) videoHandler(null, "Flip");
 					break;
 				case Keyboard.BACKSPACE :
 					if (e.ctrlKey) {
@@ -676,42 +626,41 @@
 			}
 		}
 		
-		/* TESTED */
 		private function videoHandler(e:Event = null, label:String = ""):void {
 			var item:NativeMenuItem = (e) ? e.target as NativeMenuItem : dictMenuItems[label];
 			switch(item.label) {
 				case "Brightness Down" :
 				case "Brightness Up" :
 					var dir:int = (item == dictMenuItems["Brightness Up"]) ? 1 : -1;
-					sendNotification(ApplicationFacade.VIDEO_BRIGHTEN, dir);
+					Main.sendNotification(Main.VIDEO_BRIGHTEN, dir);
 					break;
 				case "Negative" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.VIDEO_INVERT, item.checked);
+					Main.sendNotification(Main.VIDEO_INVERT, item.checked);
 					break;
 				case "Soften" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.VIDEO_SOFTEN, item.checked);
+					Main.sendNotification(Main.VIDEO_SOFTEN, item.checked);
 					break;
 				case "Sharpen" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.VIDEO_SHARPEN, item.checked);
+					Main.sendNotification(Main.VIDEO_SHARPEN, item.checked);
 					break;
 				case "Scanlines" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.VIDEO_SCANLINES, item.checked);
+					Main.sendNotification(Main.VIDEO_SCANLINES, item.checked);
 					break;
-				case "Flip (troubleshoot)" :
+				case "Flip" :
 					item.checked = !item.checked;
-					sendNotification(ApplicationFacade.VIDEO_FLIP, item.checked);
+					Main.sendNotification(Main.VIDEO_FLIP, item.checked);
 					break;
 				case "Discard Settings" :
 					dictMenuItems["Sharpen"].checked = false;
 					dictMenuItems["Soften"].checked = false;
 					dictMenuItems["Negative"].checked = false;
-					dictMenuItems["Flip (troubleshoot)"].checked = false;
+					dictMenuItems["Flip"].checked = false;
 					dictMenuItems["Scanlines"].checked = false;
-					sendNotification(ApplicationFacade.VIDEO_RESET);
+					Main.sendNotification(Main.VIDEO_RESET);
 					break;
 			}
 		}

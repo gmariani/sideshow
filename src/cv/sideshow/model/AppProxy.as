@@ -12,38 +12,21 @@
 package cv.sideshow.model {
 	
 	import flash.filesystem.File;
-	import org.puremvc.as3.multicore.interfaces.IProxy;
-    import org.puremvc.as3.multicore.patterns.proxy.Proxy;
 	
 	import flash.desktop.NativeApplication;
 	import flash.events.Event;
 	import flash.events.InvokeEvent;
 	
 	import com.adobe.images.PNGEncoder;
-	import cv.sideshow.ApplicationFacade;
+	import cv.sideshow.Main;
 	import cv.sideshow.view.components.MenuIcon;
 	
-	public class AppProxy extends Proxy implements IProxy {
-		
-		public static const NAME:String = 'AppProxy';
+	public class AppProxy {
 		
 		private var app:NativeApplication;
 		private var icon:MenuIcon = new MenuIcon();
 		
 		public function AppProxy() {
-			super(NAME);
-		}
-		
-		//--------------------------------------
-		//  Properties
-		//--------------------------------------
-		
-		//--------------------------------------
-		//  Methods
-		//--------------------------------------
-		
-		override public function initializeNotifier(key:String):void {
-			super.initializeNotifier(key);
 			
 			app = NativeApplication.nativeApplication;
 			app.addEventListener(Event.EXITING, onExiting);
@@ -61,27 +44,35 @@ package cv.sideshow.model {
 		}
 		
 		//--------------------------------------
+		//  Properties
+		//--------------------------------------
+		
+		//--------------------------------------
+		//  Methods
+		//--------------------------------------
+		
+		//--------------------------------------
 		//  Private
 		//--------------------------------------
 		
 		private function onExiting(event:Event):void {
 			event.preventDefault();
-			sendNotification(ApplicationFacade.EXITING);
+			Main.sendNotification(Main.EXITING);
 		}
 		
 		private function onInvoke(event:InvokeEvent):void {
 			if(event.arguments.length > 0) {
-				sendNotification(ApplicationFacade.OPEN_FILE, new File(event.arguments[0]));
+				Main.sendNotification(Main.OPEN_FILE, new File(event.arguments[0]));
 				
 				for (var i:String in event.arguments) {
 					if (i == "0") continue;
-					sendNotification(ApplicationFacade.ADD_FILE, { url:event.arguments[i].path } );
+					Main.sendNotification(Main.ADD_FILE, { url:event.arguments[i].path } );
 				}
 			}
 		}
 		
 		private function onIdle(e:Event):void {
-			sendNotification(ApplicationFacade.IDLE);
+			Main.sendNotification(Main.IDLE);
 		}
 	}
 }

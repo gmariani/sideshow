@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file
@@ -46,22 +46,18 @@ package cv.sideshow.view {
 	import flash.ui.Mouse;
 	import flash.utils.ByteArray;
 	
-	import gs.TweenLite;
+	import com.greensock.TweenLite;
 
-	import cv.sideshow.ApplicationFacade;
+	import cv.sideshow.Main;
 	import cv.sideshow.view.FrameMediator;
 	
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
-	
-	public class StageMediator extends Mediator implements IMediator {
+	public class StageMediator {
 		
-		public static const NAME:String = 'StageMediator';
 		private const GROW_SIZE:uint = 25;
 		
 		public var appAlpha:Number = 1;
 		public var isInitialized:Boolean = false;
+		public var doLogoBounce:Boolean = true;
 		
 		private var sprHit:Sprite;
 		private var sprBack:Sprite;
@@ -77,10 +73,10 @@ package cv.sideshow.view {
 		private var objPixelBender:Object = new Object();
 		private var isAudio:Boolean = false;
 		private var doOnStartUp:Boolean = false;
-		private var doLogoBounce:Boolean = true;
+		private var root:MovieClip;
 		
-		public function StageMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
+		public function StageMediator(rootRef:MovieClip) {
+			root = rootRef;
 			
 			// Init Window
 			win.title = "SideShow";
@@ -92,6 +88,7 @@ package cv.sideshow.view {
 			
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
+			root.addEventListener(Event.MOUSE_LEAVE, onMouseLeaveStage);
 			stage.addEventListener(Event.MOUSE_LEAVE, onMouseLeaveStage);
 			stage.addEventListener(MouseEvent.MOUSE_UP, hitHandler);
 			stage.addEventListener(FullScreenEvent.FULL_SCREEN, onFullScreenRedraw);
@@ -110,6 +107,7 @@ package cv.sideshow.view {
 			
 			// Create Hit Area / Init Drag
 			sprHit = new Sprite();
+			sprHit.name = 'sprHit';
 			sprHit.alpha = 0;
 			sprHit.useHandCursor = false;
 			sprHit.doubleClickEnabled = true;
@@ -121,7 +119,7 @@ package cv.sideshow.view {
 			sprHit.addEventListener(MouseEvent.MOUSE_WHEEL, 			hitHandler);
 			sprHit.addEventListener(MouseEvent.DOUBLE_CLICK, 			hitHandler);
 			sprHit.addEventListener(MouseEvent.MOUSE_MOVE, 				hitHandler);
-			stage.addChild(sprHit);
+			root.addChild(sprHit);
 			
 			var loader:URLLoader = new URLLoader();
 			loader.dataFormat = URLLoaderDataFormat.BINARY; 
@@ -151,10 +149,6 @@ package cv.sideshow.view {
 			return root.stage.nativeWindow;
 		}
 		
-		public function get root():MovieClip {
-			return viewComponent as MovieClip;
-		}
-		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
@@ -163,127 +157,94 @@ package cv.sideshow.view {
 			if (isOnTopWhilePlaying) setOnTop(bool);
 		}
 		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function initializeNotifier(key:String):void {
-			super.initializeNotifier(key);
-			
-			// Frame
-			facade.registerMediator(new FrameMediator(root.getChildByName("mcFrame") as MovieClip));
+		public function updateMouse():void {
+			if (stage.displayState != StageDisplayState.NORMAL) Mouse.hide();
 		}
 		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.TOGGLE_FULL, 
-					ApplicationFacade.TOGGLE_ON_TOP, 
-					ApplicationFacade.GROW, 
-					ApplicationFacade.PLAY_PROGRESS, 
-					ApplicationFacade.PLAY_COMPLETE, 
-					ApplicationFacade.SET_SIZE, 
-					ApplicationFacade.IDLE, 
-					ApplicationFacade.CHANGE, 
-					ApplicationFacade.LOGO_BOUNCE, 
-					ApplicationFacade.EXITING];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			var o:Object = note.getBody();
+		public function grow(value:int):void {
 			var ratio:Number;
-			
-			switch (note.getName()) {
-				case ApplicationFacade.LOGO_BOUNCE :
-					doLogoBounce = note.getBody() as Boolean;
-					break;
-				case ApplicationFacade.CHANGE :
-					validateSetOnTop();
-					break;
-				case ApplicationFacade.TOGGLE_FULL :
-					if (ApplicationFacade.HAS_FILE) {
-						if (stage.displayState == StageDisplayState.NORMAL) {
-							isFullScreen = true;
-							sendNotification(ApplicationFacade.VIDEO_ASPECT_RATIO);
-							stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
-						} else {
-							stage.displayState = StageDisplayState.NORMAL;
-						}
-					}
-					break;
-				case ApplicationFacade.TOGGLE_ON_TOP :
-					setOnTop(o.toggle);
-					isOnTopWhilePlaying = Boolean(o.whilePlaying);
-					break;
-				case ApplicationFacade.IDLE :
-					if (stage.displayState != StageDisplayState.NORMAL) Mouse.hide();
-					break;
-				case ApplicationFacade.GROW :
-					var amount:Number = GROW_SIZE * (note.getBody() as int);
-					var newWidth:Number = win.width + amount;
-					var newHeight:Number = win.height + amount;
-					if (win.width > win.height) {
-						ratio = (newWidth / win.width);
-					} else {
-						ratio = (newHeight / win.height);
-					}
-					
-					TweenLite.to(win, .5, { width:(win.width * ratio), height:(win.height * ratio) } );
-					break;
-				case ApplicationFacade.PLAY_PROGRESS :
-					// If audio, show some effects
-					if(isAudio && doLogoBounce) {
-						var bytes:ByteArray = new ByteArray();
-						
-						SoundMixer.computeSpectrum(bytes, false, 0);
-						var l:uint = 256;
-						var combined:Number = 0;
-						for(var i:int = 0; i < l; i++) {
-							var n:Number = bytes.readFloat();
-							bytes.position = bytes.position + 1020;
-							var n2:Number = bytes.readFloat();
-							bytes.position = bytes.position - 1024;
-							combined += (n + n2) / 2;
-						}
-						combined /= l;
-						combined *= 10;
-						if (combined < 0) combined = 0;
-						
-						objPixelBender.transition = combined / 2;
-						updateZoom(mcLogo.mcLogo);
-					} else {
-						mcLogo.mcLogo.filters = [];
-					}
-					
-					validateSetOnTop(true)
-					break;
-				case ApplicationFacade.PLAY_COMPLETE :
-					validateSetOnTop(false);
-					break;
-				case ApplicationFacade.EXITING :
-					endPixelBender();
-					objPixelBender.transition = 1;
-					TweenLite.to(objPixelBender, 1.2, { transition:0, onUpdate:updateWaves, onComplete:NativeApplication.nativeApplication.exit } );
-					break;
-				case ApplicationFacade.SET_SIZE :
-					sprHit.graphics.clear();
-					sprHit.graphics.beginFill(0xFF00FF, 0.5);
-					sprHit.graphics.drawRect(0, 0, o.width, o.height);
-					sprHit.graphics.endFill();
-					
-					mcLogo.width = o.width - 1;
-					mcLogo.height = o.height - 1;
-					
-					sprBack.width = o.width;
-					sprBack.height = o.height;
-					
-					win.removeEventListener(Event.RESIZE, onWindowResize);
-					win.width = o.width;
-					win.height = o.height;
-					
-					win.addEventListener(Event.RESIZE, onWindowResize);
-					
-					stage.fullScreenSourceRect = new Rectangle(0, 0, win.width, win.height);
-					break;
+			var amount:Number = GROW_SIZE * value;
+			var newWidth:Number = win.width + amount;
+			var newHeight:Number = win.height + amount;
+			if (win.width > win.height) {
+				ratio = (newWidth / win.width);
+			} else {
+				ratio = (newHeight / win.height);
 			}
+			
+			TweenLite.to(win, .5, { width:(win.width * ratio), height:(win.height * ratio) } );
+		}
+		
+		public function setSize(width:Number, height:Number):void {
+			sprHit.graphics.clear();
+			sprHit.graphics.beginFill(0xFF00FF, 0.5);
+			sprHit.graphics.drawRect(0, 0, width, height);
+			sprHit.graphics.endFill();
+			
+			mcLogo.width = width - 1;
+			mcLogo.height = height - 1;
+			
+			sprBack.width = width;
+			sprBack.height = height;
+			
+			win.removeEventListener(Event.RESIZE, onWindowResize);
+			win.width = width;
+			win.height = height;
+			
+			win.addEventListener(Event.RESIZE, onWindowResize);
+			
+			stage.fullScreenSourceRect = new Rectangle(0, 0, win.width, win.height);
+		}
+		
+		public function hide():void {
+			endPixelBender();
+			objPixelBender.transition = 1;
+			TweenLite.to(objPixelBender, 1.2, { transition:0, onUpdate:updateWaves, onComplete:NativeApplication.nativeApplication.exit } );
+		}
+		
+		public function toggleFull():void {
+			if (Main.HAS_FILE) {
+				if (stage.displayState == StageDisplayState.NORMAL) {
+					isFullScreen = true;
+					Main.sendNotification(Main.VIDEO_ASPECT_RATIO);
+					stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+				} else {
+					stage.displayState = StageDisplayState.NORMAL;
+				}
+			}
+		}
+		
+		public function toggleOnTop(value:Boolean, whilePlaying:Boolean):void {
+			setOnTop(value);
+			isOnTopWhilePlaying = whilePlaying;
+		}
+		
+		public function updatePlayProgress(isPlaying:Boolean):void {
+			// If audio, show some effects
+			if(isAudio && doLogoBounce) {
+				var bytes:ByteArray = new ByteArray();
+				
+				SoundMixer.computeSpectrum(bytes, false, 0);
+				var l:uint = 256;
+				var combined:Number = 0;
+				for(var i:int = 0; i < l; i++) {
+					var n:Number = bytes.readFloat();
+					bytes.position = bytes.position + 1020;
+					var n2:Number = bytes.readFloat();
+					bytes.position = bytes.position - 1024;
+					combined += (n + n2) / 2;
+				}
+				combined /= l;
+				combined *= 10;
+				if (combined < 0) combined = 0;
+				
+				objPixelBender.transition = combined / 2;
+				updateZoom(mcLogo.mcLogo);
+			} else {
+				mcLogo.mcLogo.filters = [];
+			}
+			
+			validateSetOnTop(isPlaying);
 		}
 		
 		public function closeFile():void {
@@ -296,7 +257,7 @@ package cv.sideshow.view {
 			isAudio = true;
 			TweenLite.to(sprBack, .5, { autoAlpha:0 } );
 			TweenLite.to(mcLogo, .5, { autoAlpha:appAlpha } );
-			sendNotification(ApplicationFacade.VIDEO_RESET_SIZE);
+			Main.sendNotification(Main.RESET_SIZE);
 		}
 		
 		public function videoMode():void {
@@ -352,9 +313,9 @@ package cv.sideshow.view {
 					break;
 				case NativeDragEvent.NATIVE_DRAG_DROP :
 					var arr:Array = cb.getData(ClipboardFormats.FILE_LIST_FORMAT, ClipboardTransferMode.ORIGINAL_ONLY) as Array;
-					sendNotification(ApplicationFacade.OPEN_FILE, arr.shift());
+					Main.sendNotification(Main.OPEN_FILE, arr.shift());
 					for (var i:uint = 0; i < arr.length; i++) {
-						sendNotification(ApplicationFacade.ADD_FILE, { url:arr[i].url } );
+						Main.sendNotification(Main.ADD_FILE, { url:arr[i].url } );
 					}
 					break;
 			}
@@ -367,25 +328,25 @@ package cv.sideshow.view {
 		private function hitHandler(e:MouseEvent):void {
 			switch(e.type) {
 				case MouseEvent.CONTEXT_MENU :
-					sendNotification(ApplicationFacade.MENU_SHOW, { stage:stage, stageX:e.stageX, stageY:e.stageY } );
+					Main.sendNotification(Main.MENU_SHOW, { stage:stage, stageX:e.stageX, stageY:e.stageY } );
 					break;
 				case MouseEvent.MOUSE_DOWN :
 					isResizing = true;
-					if (stage.mouseX >= 0 && stage.mouseX <= ApplicationFacade.GRIPPER_SIZE && stage.mouseY >= 0 && stage.mouseY <= ApplicationFacade.GRIPPER_SIZE)	{
+					if (stage.mouseX >= 0 && stage.mouseX <= Main.GRIPPER_SIZE && stage.mouseY >= 0 && stage.mouseY <= Main.GRIPPER_SIZE)	{
 						win.startResize(NativeWindowResize.TOP_LEFT);
-					} else if (stage.mouseX <= win.width && stage.mouseX >= win.width - ApplicationFacade.GRIPPER_SIZE && stage.mouseY >= 0 && stage.mouseY <= ApplicationFacade.GRIPPER_SIZE) {
+					} else if (stage.mouseX <= win.width && stage.mouseX >= win.width - Main.GRIPPER_SIZE && stage.mouseY >= 0 && stage.mouseY <= Main.GRIPPER_SIZE) {
 						win.startResize(NativeWindowResize.TOP_RIGHT);
-					} else if (stage.mouseX >= 0 && stage.mouseX <= ApplicationFacade.GRIPPER_SIZE && stage.mouseY <= win.height && stage.mouseY >= win.height - ApplicationFacade.GRIPPER_SIZE) {
+					} else if (stage.mouseX >= 0 && stage.mouseX <= Main.GRIPPER_SIZE && stage.mouseY <= win.height && stage.mouseY >= win.height - Main.GRIPPER_SIZE) {
 						win.startResize(NativeWindowResize.BOTTOM_LEFT);
-					} else if (stage.mouseX <= win.width && stage.mouseX >= win.width - ApplicationFacade.GRIPPER_SIZE && stage.mouseY <= win.height && stage.mouseY >= win.height - ApplicationFacade.GRIPPER_SIZE) {
+					} else if (stage.mouseX <= win.width && stage.mouseX >= win.width - Main.GRIPPER_SIZE && stage.mouseY <= win.height && stage.mouseY >= win.height - Main.GRIPPER_SIZE) {
 						win.startResize(NativeWindowResize.BOTTOM_RIGHT);
-					} else if (stage.mouseX >= 0 && stage.mouseX <= ApplicationFacade.GRIPPER_SIZE) {
+					} else if (stage.mouseX >= 0 && stage.mouseX <= Main.GRIPPER_SIZE) {
 						win.startResize(NativeWindowResize.LEFT);
-					} else if (stage.mouseX >= win.width - ApplicationFacade.GRIPPER_SIZE && stage.mouseX <= win.width) {
+					} else if (stage.mouseX >= win.width - Main.GRIPPER_SIZE && stage.mouseX <= win.width) {
 						win.startResize(NativeWindowResize.RIGHT);
-					} else if (stage.mouseY >= 0 && stage.mouseY <= ApplicationFacade.GRIPPER_SIZE) {
+					} else if (stage.mouseY >= 0 && stage.mouseY <= Main.GRIPPER_SIZE) {
 						win.startResize(NativeWindowResize.TOP);
-					} else if (stage.mouseY >= win.height - ApplicationFacade.GRIPPER_SIZE && stage.mouseY <= win.height) {
+					} else if (stage.mouseY >= win.height - Main.GRIPPER_SIZE && stage.mouseY <= win.height) {
 						win.startResize(NativeWindowResize.BOTTOM);
 					} else {
 						isResizing = false;
@@ -393,18 +354,18 @@ package cv.sideshow.view {
 					}
 					break;
 				case MouseEvent.MOUSE_UP :
-					if (!isFullScreen && isResizing) sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { width:win.width, height:win.height } );
+					if (!isFullScreen && isResizing) Main.sendNotification(Main.SET_SIZE, { width:win.width, height:win.height } );
 					break;
 				case MouseEvent.MOUSE_WHEEL :
 					appAlpha += e.delta / 100
 					appAlpha = Math.max(.1, Math.min(1, appAlpha));
-					sendNotification(ApplicationFacade.UPDATE, {alpha:appAlpha} );
+					Main.sendNotification(Main.UPDATE, {alpha:appAlpha} );
 					break;
 				case MouseEvent.MOUSE_MOVE :
 					Mouse.show();
 					break;
 				case MouseEvent.DOUBLE_CLICK :
-					sendNotification(ApplicationFacade.TOGGLE_FULL);
+					Main.sendNotification(Main.TOGGLE_FULL);
 					break;
 			}
 		}
@@ -416,7 +377,7 @@ package cv.sideshow.view {
 		private function onLoadComplete2(event:Event):void { 
 			pbWave = new Shader(event.target.data);
 			isInitialized = true;
-			sendNotification(ApplicationFacade.UPDATE);
+			Main.sendNotification(Main.UPDATE);
 		}
 		
 		private function onLoadComplete3(event:Event):void { 
@@ -424,16 +385,16 @@ package cv.sideshow.view {
 		}
 		
 		private function onFullScreenRedraw(event:FullScreenEvent):void {
-			sendNotification(ApplicationFacade.ON_TOGGLE_FULL, event.fullScreen);
+			Main.sendNotification(Main.ON_TOGGLE_FULL, event.fullScreen);
 			if (!event.fullScreen) isFullScreen = false;
 		}
 		
 		private function onMouseLeaveStage(e:Event):void {
-			sendNotification(ApplicationFacade.HIDE_FRAME);
+			Main.sendNotification(Main.HIDE_FRAME);
 		}
 		
 		private function onWindowResize(e:NativeWindowBoundsEvent):void	{
-			if (!isFullScreen) sendNotification(ApplicationFacade.VIDEO_SET_SIZE, { width:e.afterBounds.width, height:e.afterBounds.height } );
+			if (!isFullScreen) Main.sendNotification(Main.SET_SIZE, { width:e.afterBounds.width, height:e.afterBounds.height } );
 		}
 		
 		private function setOnTop(value:Boolean):void {

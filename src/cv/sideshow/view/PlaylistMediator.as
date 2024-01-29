@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file
@@ -14,7 +14,13 @@
 
 package cv.sideshow.view {
 
-	import com.adobe.protocols.dict.events.ErrorEvent;
+	import cv.sideshow.Main;
+	import cv.data.PlayList;
+	
+	import fl.controls.DataGrid;
+	import fl.controls.dataGridClasses.DataGridColumn;
+	import fl.events.ListEvent;
+	
 	import flash.display.AVM1Movie;
 	import flash.display.Loader;
 	import flash.display.LoaderInfo;
@@ -25,17 +31,6 @@ package cv.sideshow.view {
 	import flash.system.LoaderContext;
 	import flash.system.Security;
 	import flash.system.System;
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
-	
-	import cv.sideshow.ApplicationFacade;
-	import cv.data.PlayList;
-	
-	import fl.controls.DataGrid;
-	import fl.controls.dataGridClasses.DataGridColumn;
-	import fl.events.ListEvent;
-	
 	import flash.desktop.NativeApplication;
 	import flash.display.NativeWindowInitOptions;
 	import flash.display.NativeWindowType;
@@ -52,16 +47,12 @@ package cv.sideshow.view {
 	import flash.filesystem.File;
 	import flash.net.FileFilter;
 	import flash.ui.Keyboard;
-	
 
-	public class PlaylistMediator extends Mediator implements IMediator {
-		
-		public static const NAME:String = 'PlaylistMediator';
+	public class PlaylistMediator extends MovieClip {
 		
 		private var pw:NativeWindow;
 		private var fileDir:File = File.desktopDirectory;
 		private var filePL:File = File.desktopDirectory;
-		private var grid:DataGrid;
 		private var currentItem:Object;
 		private var addFileMenuItem:NativeMenuItem;
 		private var addDirMenuItem:NativeMenuItem;
@@ -71,15 +62,12 @@ package cv.sideshow.view {
 		private var closeMenuItem:NativeMenuItem;
 		private var useHighQuality:Boolean = true;
 		
-		public function PlaylistMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
+		public function PlaylistMediator() {
 			
 			fileDir.addEventListener(Event.SELECT, onSelection);
 			fileDir.addEventListener(FileListEvent.SELECT_MULTIPLE, onSelectionMultiple);
 			
 			filePL.addEventListener(Event.SELECT, onSelectionPlayList);
-			
-			grid = root.getChildByName("grid") as DataGrid;
 			
 			var col:DataGridColumn;
 			col = grid.addColumn("Index");
@@ -92,7 +80,7 @@ package cv.sideshow.view {
 			col.width = 100;
 			grid.addEventListener(Event.CHANGE, onFocusItem);
 			grid.addEventListener(ListEvent.ITEM_DOUBLE_CLICK, onPlayItem);
-			grid.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+			grid.addEventListener(KeyboardEvent.KEY_DOWN, onKeysDown);
 			grid.allowMultipleSelection = false;
 			
 			createWindow();
@@ -102,51 +90,31 @@ package cv.sideshow.view {
 		//  Properties
 		//--------------------------------------
 		
-		private function get root():MovieClip {
-			return viewComponent as MovieClip;
-		}
-		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
+		
+		public function setURL(url:String, quality:Boolean, fileType:String):void {
+			useHighQuality = quality;
+			if(url.indexOf("http://www.youtube.com/watch") > -1) {
+				getFLVURL(url);
+			} else {
+				Main.sendNotification(Main.ADD_FILE, { url:url, extOverride:fileType} );
+			}
+		}
+		
+		public function show():void {
+			if (pw.closed) createWindow();
+			pw.activate();
+			pw.orderToFront();
+			pw.visible = true;
+		}
 		
 		public function updateList(list:PlayList):void {
 			grid.removeAll();
 			var arr:Array = list.toDataProvider().toArray();
 			for (var i:String in arr) {
 				grid.addItem( { Index:uint(i), Name:unescape(arr[i].label), Duration:convertTime(arr[i].data.length), URL:arr[i].data.url } );
-			}
-		}
-		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.PLAYLIST_UPDATE, ApplicationFacade.PLAYLIST_SHOW, ApplicationFacade.PLAYLIST_URL];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			switch(note.getName()) {
-				case ApplicationFacade.PLAYLIST_UPDATE :
-					updateList(note.getBody() as PlayList);
-					break;
-				case ApplicationFacade.PLAYLIST_SHOW :
-					if (pw.closed) createWindow();
-					pw.activate();
-					pw.orderToFront();
-					pw.visible = true;
-					break;
-				case ApplicationFacade.PLAYLIST_URL :
-					var o:Object = note.getBody();
-					var url:String = o.url;
-					useHighQuality = o.quality as Boolean;
-					if(url.indexOf("http://www.youtube.com/watch") > -1) {
-						getFLVURL(url);
-					} else {
-						sendNotification(ApplicationFacade.ADD_FILE, { url:url, extOverride:o.fileType} );
-					}
-					break;
 			}
 		}
 		
@@ -176,12 +144,12 @@ package cv.sideshow.view {
 			
 			pw.stage.align = StageAlign.TOP_LEFT;
 			pw.stage.scaleMode = StageScaleMode.NO_SCALE;
-			pw.stage.addChild(root);
+			pw.stage.addChild(this);
 		}
 		
 		private function onSelectionPlayList(event:Event):void {
 			var f:File = event.target as File;
-			sendNotification(ApplicationFacade.OPEN_PLAYLIST, f.url );
+			Main.sendNotification(Main.OPEN_PLAYLIST, f.url );
 		}
 		
 		private function onSelection(e:Event):void {
@@ -189,7 +157,7 @@ package cv.sideshow.view {
 			if (f.isDirectory) {
 				addMultiple(f.getDirectoryListing());
 			} else {
-				sendNotification(ApplicationFacade.OPEN_FILE, f);
+				Main.sendNotification(Main.OPEN_FILE, f);
 			}
 		}
 		
@@ -199,7 +167,7 @@ package cv.sideshow.view {
 		
 		private function addMultiple(arr:Array):void {
 			for (var i:uint = 0; i < arr.length; i++) {
-				sendNotification(ApplicationFacade.ADD_FILE, { url:arr[i].url } );
+				Main.sendNotification(Main.ADD_FILE, { url:arr[i].url } );
 			}
 		}
 		
@@ -249,11 +217,11 @@ package cv.sideshow.view {
 			return nm;
 		}
 		
-		private function onKeyDown(e:KeyboardEvent):void {
+		private function onKeysDown(e:KeyboardEvent):void {
 			switch(e.keyCode) {
 				case Keyboard.DELETE :
 					if (currentItem) {
-						sendNotification(ApplicationFacade.REMOVE_FILE, currentItem.Index );
+						Main.sendNotification(Main.REMOVE_FILE, currentItem.Index );
 					}
 					break;
 			}
@@ -265,7 +233,7 @@ package cv.sideshow.view {
 		
 		private function onPlayItem(event:ListEvent):void {
 			currentItem = event.item;
-			sendNotification(ApplicationFacade.OPEN_ITEM, { url:currentItem.URL, index:currentItem.Index } );
+			Main.sendNotification(Main.OPEN_ITEM, { url:currentItem.URL, index:currentItem.Index } );
 		}
 		
 		private function onAddFile(event:Event):void {
@@ -277,7 +245,7 @@ package cv.sideshow.view {
 		}
 		
 		private function onAddURL(event:Event):void {
-			sendNotification(ApplicationFacade.URL_SHOW);
+			Main.sendNotification(Main.URL_SHOW);
 		}
 		
 		 private function getFLVURL(youtubeURL:String):void {
@@ -341,7 +309,7 @@ package cv.sideshow.view {
 				}
 				
 				trace("Here's the FLV URL: " + flvURL);
-				sendNotification(ApplicationFacade.ADD_FILE, { url:flvURL, extOverride:ext, title:param_rec_title, length:param_length_seconds } );
+				Main.sendNotification(Main.ADD_FILE, { url:flvURL, extOverride:ext, title:param_rec_title, length:param_length_seconds } );
 			} else {
 				trace("Couldn't download YouTube url: " + IOErrorEvent(e));
 			}
@@ -355,7 +323,7 @@ package cv.sideshow.view {
 		
 		private function onSave(event:Event):void {
 			// TODO: Actually save playlists
-			sendNotification(ApplicationFacade.SAVE_PLAYLIST);
+			Main.sendNotification(Main.SAVE_PLAYLIST);
 		}
 		
 		private function onClose(event:Event):void {

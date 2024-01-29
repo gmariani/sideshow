@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file
@@ -11,16 +11,11 @@
 
 package cv.sideshow.view {
 
-	import flash.geom.Point;
-	import org.puremvc.as3.multicore.interfaces.IMediator;
-	import org.puremvc.as3.multicore.interfaces.INotification;
-	import org.puremvc.as3.multicore.patterns.mediator.Mediator;
-	
-	import cv.sideshow.ApplicationFacade;
 	import cv.TempoLite;
 	import cv.managers.UpdateManager;
-	import gs.TweenMax;
-	import gs.easing.Linear;
+	
+	import com.greensock.TweenMax;
+	import com.greensock.easing.Linear;
 	
 	import fl.controls.Button;
 	import flash.display.NativeWindowInitOptions;
@@ -32,32 +27,23 @@ package cv.sideshow.view {
 	import flash.events.MouseEvent;
 	import flash.text.TextField;
 	import flash.text.TextFieldAutoSize;
+	import flash.geom.Point;
 	
-	public class AboutMediator extends Mediator implements IMediator {
+	public class AboutMediator extends MovieClip {
 		
-		public static const NAME:String = 'AboutMediator';
-		
-		private var txtMessage:TextField;
-		private var mcEmblem:MovieClip;
-		private var btnOk:Button;
 		private var um:UpdateManager;
 		private var w:NativeWindow;
 		
-		public function AboutMediator(viewComponent:Object) {
-			super(NAME, viewComponent);
-			
+		public function AboutMediator() {
 			um = UpdateManager.instance;
 			
-			txtMessage = root.getChildByName("txtMessage") as TextField;
 			txtMessage.embedFonts = true;
 			txtMessage.autoSize = TextFieldAutoSize.CENTER;
-			txtMessage.htmlText = "Version : <b>" + um.currentVersion + "</b><br><br>© 2010 Gabriel Mariani<br>UI based on (now defunct) Sasami2K<br>Based on <a href='http://blog.coursevector.com/tempolite'><u>TempoLite v" + TempoLite.VERSION + "</u></a><br><br><a href='http://blog.coursevector.com/sideshow'><u>http://blog.coursevector.com/sideshow</u></a>";
+			txtMessage.htmlText = "Version : <b>" + um.currentVersion + "</b><br><br>© 2011 Gabriel Mariani<br>UI based on (now defunct) Sasami2K<br>Based on <a href='http://blog.coursevector.com/tempolite'><u>TempoLite v" + TempoLite.VERSION + "</u></a><br><br><a href='http://blog.coursevector.com/sideshow'><u>http://blog.coursevector.com/sideshow</u></a>";
 			
-			btnOk = root.getChildByName("btnOk") as Button;
 			btnOk.y = txtMessage.y + txtMessage.textHeight + 15;
 			btnOk.addEventListener(MouseEvent.CLICK, onClickOk);
 			
-			mcEmblem = root.getChildByName("mcEmblem") as MovieClip;
 			mcEmblem.rotationX = 0;
 			TweenMax.to(mcEmblem, 5, { rotationY:360, loop:true, ease:Linear.easeNone } );
 			
@@ -68,31 +54,15 @@ package cv.sideshow.view {
 		//  Properties
 		//--------------------------------------
 		
-		private function get root():MovieClip {
-			return viewComponent as MovieClip;
-		}
-		
 		//--------------------------------------
 		//  Methods
 		//--------------------------------------
 		
-		//--------------------------------------
-		//  PureMVC
-		//--------------------------------------
-		
-		override public function listNotificationInterests():Array {
-			return [ApplicationFacade.ABOUT_SHOW];
-		}
-		
-		override public function handleNotification(note:INotification):void {
-			switch(note.getName()) {
-				case ApplicationFacade.ABOUT_SHOW :
-					if (w.closed) createWindow();
-					w.activate();
-					w.orderToFront();
-					w.visible = true;
-					break;
-			}
+		public function show():void {
+			if (w.closed) createWindow();
+			w.activate();
+			w.orderToFront();
+			w.visible = true;
 		}
 		
 		//--------------------------------------
@@ -116,7 +86,7 @@ package cv.sideshow.view {
 			w.height = 220;
 			w.stage.align = StageAlign.TOP_LEFT;
 			w.stage.scaleMode = StageScaleMode.NO_SCALE;
-			w.stage.addChild(root);
+			w.stage.addChild(this);
 			w.stage.root.transform.perspectiveProjection.projectionCenter = new Point(mcEmblem.x, mcEmblem.y);
 		}
 	}

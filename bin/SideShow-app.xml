@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-<application xmlns="http://ns.adobe.com/air/application/2.0beta2">
+<application xmlns="http://ns.adobe.com/air/application/2.0">
 	<id>com.coursevector.SideShow</id>
-	<version>2.1.0</version>
+	<version>3.0.0</version>
 	<filename>SideShow</filename>
 	<name>Course Vector SideShow</name>
 	
 	<description>Sideshow is a standalone utility to play Adobe Flash Video (FLV and H.264 / MPEG-4) files with.</description>
 	
-	<copyright>Copyright (c) 2009 Course Vector</copyright>
+	<copyright>Copyright (c) 2011 Course Vector</copyright>
 	
 	<initialWindow>
 		  <content>SideShow.swf</content>

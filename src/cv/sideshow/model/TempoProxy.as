@@ -27,14 +27,12 @@ package cv.sideshow.model {
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
-    import org.puremvc.as3.multicore.interfaces.IProxy;
-    import org.puremvc.as3.multicore.patterns.proxy.Proxy;
 	
 	import cv.TempoLite;
 	import cv.events.LoadEvent;
 	import cv.events.PlayProgressEvent;
 	import cv.events.MetaDataEvent;
-	import cv.sideshow.ApplicationFacade;
+	import cv.sideshow.Main;
 	import cv.managers.UpdateManager;
 	
 	import fl.data.DataProvider;
@@ -45,9 +43,7 @@ package cv.sideshow.model {
 	import flash.media.Video;
 	import flash.net.SharedObject;
 	
-	public class TempoProxy extends Proxy implements IProxy {
-		
-		public static const NAME:String = 'TempoProxy';
+	public class TempoProxy {
 		
 		private var nsPlayer:NetStreamPlayer = new NetStreamPlayer();
 		private var rtmpPlayer:RTMPPlayer = new RTMPPlayer();
@@ -55,11 +51,10 @@ package cv.sideshow.model {
 		private var sndPlayer:SoundPlayer = new SoundPlayer();
 		private var tempo:TempoLite = new TempoLite([nsPlayer, rtmpPlayer, imgPlayer, sndPlayer]);
 		private var soList:SharedObject = SharedObject.getLocal("SideShow");
-		private var isMute:Boolean = false;
+		private var _isMute:Boolean = false;
 		private var prevVolume:Number = 1;
 		
 		public function TempoProxy() {
-            super(NAME);
 			
 			tempo.addEventListener(LoadEvent.LOAD_START, tempoHandler, false, 0, true);
 			tempo.addEventListener(LoadEvent.LOAD_PROGRESS, tempoHandler, false, 0, true);
@@ -86,7 +81,7 @@ package cv.sideshow.model {
 		
 		public function set volume(value:Number):void {
 			tempo.volume = value;
-			sendNotification(ApplicationFacade.VOLUME_UPDATE, tempo.volume);
+			Main.sendNotification(Main.VOLUME_UPDATE, tempo.volume);
 		}
 		
 		public function get repeat():String {
@@ -107,6 +102,20 @@ package cv.sideshow.model {
 		
 		public function get isPause():Boolean {
 			return tempo.paused;
+		}
+		
+		public function get isMute():Boolean {
+			return _isMute;
+		}
+		
+		public function set isMute(value:Boolean):void {
+			_isMute = value;
+			if (_isMute) {
+				prevVolume = this.volume;
+				this.volume = 0;
+			} else {
+				this.volume = prevVolume;
+			}
 		}
 		
 		//--------------------------------------
@@ -131,20 +140,37 @@ package cv.sideshow.model {
 			soList.clear();
 			
 			tempo.clearItems();
-			sendNotification(ApplicationFacade.PLAYLIST_UPDATE, tempo.list);
+			Main.sendNotification(Main.PLAYLIST_UPDATE, tempo.list);
 		}
 		
 		public function closeFile():void {
 			tempo.stop();
 			tempo.unload();
 		}
-		
+		 
+		// BUG: Shuffle is broken
 		public function getNext():Object {
-			return tempo.list.getNext();
+			var o:Object;
+			if (!tempo.shuffle) {
+				o = tempo.list.getNext();
+			} else {
+				o = tempo.listShuffled.getNext();
+				tempo.list.index = o.index; // TypeError: Error #1009: Cannot access a property or method of a null object reference.
+				o = tempo.list.getCurrent();
+			}
+			return o;
 		}
 		
 		public function getPrevious():Object {
-			return tempo.list.getPrevious();
+			var o:Object;
+			if (!tempo.shuffle) {
+				o = tempo.list.getPrevious();
+			} else {
+				o = tempo.listShuffled.getPrevious();
+				tempo.list.index = o.index;
+				o = tempo.list.getCurrent();
+			}
+			return o;
 		}
 		
 		public function isAudio(f:File):Boolean {
@@ -234,16 +260,6 @@ package cv.sideshow.model {
 			updatePause();
 		}
 		
-		public function setMute(bool:Boolean):void {
-			isMute = bool;
-			if (isMute) {
-				prevVolume = tempo.volume;
-				tempo.volume = 0;
-			} else {
-				tempo.volume = prevVolume;
-			}
-		}
-		
 		public function setVideoScreen(vid:Video):void {
 			nsPlayer.video = vid;
 		}
@@ -303,20 +319,20 @@ package cv.sideshow.model {
 			
 			switch(e.type) {
 				case PlayProgressEvent.PLAY_START :
-					sendNotification(ApplicationFacade.PLAY_START);
-					sendNotification(ApplicationFacade.VOLUME_UPDATE, tempo.volume);
+					Main.sendNotification(Main.PLAY_START);
+					Main.sendNotification(Main.VOLUME_UPDATE, tempo.volume);
 					
-					if(ApplicationFacade.CURRENT_FILE) {
-						if (ApplicationFacade.CURRENT_FILE.exists && !isAudio(ApplicationFacade.CURRENT_FILE)) {
-							sendNotification(ApplicationFacade.VALIDATE_VIDEO);
+					if(Main.CURRENT_FILE) {
+						if (Main.CURRENT_FILE.exists && !isAudio(Main.CURRENT_FILE)) {
+							Main.sendNotification(Main.VALIDATE_VIDEO);
 						} else {
-							sendNotification(ApplicationFacade.VIDEO_RESET_SIZE);
+							Main.sendNotification(Main.RESET_SIZE);
 						}
-					} else if (ApplicationFacade.CURRENT_URL) {
-						if (!isAudioURL(ApplicationFacade.CURRENT_URL.extension)) {
-							sendNotification(ApplicationFacade.VALIDATE_VIDEO);
+					} else if (Main.CURRENT_URL) {
+						if (!isAudioURL(Main.CURRENT_URL.extension)) {
+							Main.sendNotification(Main.VALIDATE_VIDEO);
 						} else {
-							sendNotification(ApplicationFacade.VIDEO_RESET_SIZE);
+							Main.sendNotification(Main.RESET_SIZE);
 						}
 					}
 					break;
@@ -325,30 +341,30 @@ package cv.sideshow.model {
 					break;
 				case PlayProgressEvent.PLAY_COMPLETE :
 					tempo.pause(true);
-					tempo.seekPercent(.01);
-					sendNotification(ApplicationFacade.PLAY_COMPLETE);
+					tempo.seekPercent(0);
+					Main.sendNotification(Main.PLAY_COMPLETE);
 					updateProgress();
 					break;
 				case LoadEvent.LOAD_COMPLETE :
-					if(!ApplicationFacade.CURRENT_FILE) {
+					if(!Main.CURRENT_FILE) {
 						var loader:URLLoader = new URLLoader();
 						loader.dataFormat = URLLoaderDataFormat.BINARY;
 						loader.addEventListener(Event.COMPLETE, urlLoadHandler, false, 0, true);
 						loader.addEventListener(IOErrorEvent.IO_ERROR, urlLoadHandler, false, 0, true);
-						loader.load(new URLRequest(ApplicationFacade.CURRENT_URL.name));
+						loader.load(new URLRequest(Main.CURRENT_URL.name));
 					} else {
-						sendNotification(ApplicationFacade.LOAD_COMPLETE, (tempo.loadCurrent / tempo.loadTotal));
+						Main.sendNotification(Main.LOAD_COMPLETE, (tempo.loadCurrent / tempo.loadTotal));
 					}
 				case LoadEvent.LOAD_START :
 				case LoadEvent.LOAD_PROGRESS :
-					trace("tempo load", tempo.loadCurrent / tempo.loadTotal);
-					sendNotification(ApplicationFacade.LOAD_PROGRESS, (tempo.loadCurrent / tempo.loadTotal));
+					//trace("tempo load", tempo.loadCurrent / tempo.loadTotal);
+					Main.sendNotification(Main.LOAD_PROGRESS, (tempo.loadCurrent / tempo.loadTotal));
 					break;
 				case MetaDataEvent.METADATA :
 					o = tempo.metaData;
-					sendNotification(ApplicationFacade.METADATA, o);
-					sendNotification(ApplicationFacade.PLAYLIST_UPDATE, tempo.list);
-					if (o.hasOwnProperty("framerate")) sendNotification(ApplicationFacade.VALIDATE_VIDEO, o);
+					Main.sendNotification(Main.METADATA, o);
+					Main.sendNotification(Main.PLAYLIST_UPDATE, tempo.list);
+					if (o.hasOwnProperty("framerate")) Main.sendNotification(Main.VALIDATE_VIDEO, o);
 					break;
 				case TempoLite.REFRESH_PLAYLIST :
 				case TempoLite.NEW_PLAYLIST :
@@ -361,11 +377,11 @@ package cv.sideshow.model {
 						trace("TempoProxy::NEW_PLAYLIST - " + e);
 					}
 					
-					sendNotification(ApplicationFacade.PLAYLIST_UPDATE, tempo.list);
+					Main.sendNotification(Main.PLAYLIST_UPDATE, tempo.list);
 					break;
 				case PlayProgressEvent.STATUS :
-					sendNotification(ApplicationFacade.PLAYLIST_UPDATE, tempo.list);
-					sendNotification(ApplicationFacade.CHANGE);
+					Main.sendNotification(Main.PLAYLIST_UPDATE, tempo.list);
+					Main.sendNotification(Main.CHANGE);
 					updateProgress();
 					updatePause();
 					break;
@@ -377,25 +393,25 @@ package cv.sideshow.model {
 			if (event.type == IOErrorEvent.IO_ERROR) {
 				trace("TempoProxy::urlLoadHandler - Error : Unable to get file from server.");
 			} else {
-				ApplicationFacade.CURRENT_FILE = File.createTempFile();
+				Main.CURRENT_FILE = File.createTempFile();
 				var loader:URLLoader = event.target as URLLoader;
 				var fs:FileStream = new FileStream();
-				fs.open(ApplicationFacade.CURRENT_FILE, FileMode.WRITE);
+				fs.open(Main.CURRENT_FILE, FileMode.WRITE);
 				fs.writeBytes(loader.data, 0, loader.bytesTotal);
 				fs.close();
-				sendNotification(ApplicationFacade.LOAD_COMPLETE, (tempo.loadCurrent / tempo.loadTotal));
+				Main.sendNotification(Main.LOAD_COMPLETE, (tempo.loadCurrent / tempo.loadTotal));
 			}
 		}
 		
 		private function updateProgress():void {
-			sendNotification(ApplicationFacade.PLAY_PROGRESS, {isPause:tempo.paused, currentPercent:tempo.currentPercent, currentTime:TempoLite.timeToString(tempo.timeCurrent), totalTime:TempoLite.timeToString(tempo.timeTotal)});
+			Main.sendNotification(Main.PLAY_PROGRESS, {isPause:tempo.paused, currentPercent:tempo.currentPercent, currentTime:TempoLite.timeToString(tempo.timeCurrent), totalTime:TempoLite.timeToString(tempo.timeTotal)});
 		}
 		
 		private function updatePause():void {
 			if(!tempo.paused) {
-				sendNotification(ApplicationFacade.PAUSE_UPDATE, tempo.paused);
+				Main.sendNotification(Main.PAUSE_UPDATE, tempo.paused);
 			} else {
-				sendNotification(ApplicationFacade.PAUSE_UPDATE, true);
+				Main.sendNotification(Main.PAUSE_UPDATE, true);
 			}
 		}
 	}

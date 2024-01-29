@@ -676,6 +676,8 @@ package cv.media {
 						if (!autoStart && !skipOnce) {
 							pause(true);
 							skipOnce = true;
+						} else {
+							pause(false);
 						}
 						break;
 					case "NetStream.Play.Stop":

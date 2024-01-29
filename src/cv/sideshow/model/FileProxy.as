@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 //
 //  COURSE VECTOR
-//  Copyright 2008 Course Vector
+//  Copyright 2011 Course Vector
 //  All Rights Reserved.
 //
 //  NOTICE: Course Vector permits you to use, modify, and distribute this file
@@ -10,9 +10,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 package cv.sideshow.model {
-	
-	import org.puremvc.as3.multicore.interfaces.IProxy;
-    import org.puremvc.as3.multicore.patterns.proxy.Proxy;
 	
 	import flash.desktop.NativeApplication;
 	import flash.events.Event;
@@ -24,11 +21,9 @@ package cv.sideshow.model {
 	import flash.utils.ByteArray;
 	
 	import com.adobe.images.PNGEncoder;
-	import cv.sideshow.ApplicationFacade;
+	import cv.sideshow.Main;
 	
-	public class FileProxy extends Proxy implements IProxy {
-		
-		public static const NAME:String = 'FileProxy';
+	public class FileProxy {
 		
 		private var fileDir:File = File.desktopDirectory;
 		private var fileSave:File = File.desktopDirectory;
@@ -36,7 +31,6 @@ package cv.sideshow.model {
 		private var bmd:BitmapData;
 		
 		public function FileProxy() {
-			super(NAME);
 			
 			fileDir.addEventListener(Event.SELECT, selectHandler);
 			fileDir.addEventListener(FileListEvent.SELECT_MULTIPLE, selectMultipleHandler);
@@ -66,10 +60,6 @@ package cv.sideshow.model {
 			fileScreen.browseForSave("Save ScreenShot");
 		}
 		
-		override public function initializeNotifier(key:String):void {
-			super.initializeNotifier(key);
-		}
-		
 		//--------------------------------------
 		//  Private
 		//--------------------------------------
@@ -79,7 +69,7 @@ package cv.sideshow.model {
 			if (f.isDirectory) {
 				addMultiple(f.getDirectoryListing());
 			} else {
-				sendNotification(ApplicationFacade.OPEN_FILE, f);
+				Main.sendNotification(Main.OPEN_FILE, f);
 			}
 		}
 		
@@ -89,12 +79,12 @@ package cv.sideshow.model {
 		
 		private function addMultiple(arr:Array):void {
 			for (var i:uint = 0; i < arr.length; i++) {
-				sendNotification(ApplicationFacade.ADD_FILE, { url:arr[i].url } );
+				Main.sendNotification(Main.ADD_FILE, { url:arr[i].url } );
 			}
 		}
 		
 		private function saveHandler(e:Event):void {
-			if (ApplicationFacade.CURRENT_FILE) ApplicationFacade.CURRENT_FILE.copyTo(fileSave);
+			if (Main.CURRENT_FILE) Main.CURRENT_FILE.copyTo(fileSave);
 		}
 		
 		private function saveScreenShot(e:Event):void {
@@ -110,7 +100,7 @@ package cv.sideshow.model {
 				stream.writeBytes(img);
 				stream.close();
 			}
-			sendNotification(ApplicationFacade.CONTROL_PAUSE, false);
+			Main.sendNotification(Main.CONTROL_PAUSE, false);
 		}
 	}
 }
