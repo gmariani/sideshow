@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<application xmlns="http://ns.adobe.com/air/application/1.0">
+	<id>com.coursevector.SideShow</id>
+	<version>1.1.3</version>
+	<filename>SideShow</filename>
+	<name>Course Vector SideShow</name>
+	
+	<description>Sideshow is a standalone utility to play Adobe Flash Video (FLV and H.264 / MPEG-4) files with.</description>
+	
+	<copyright>Copyright (c) 2008 Course Vector</copyright>
+	
+	<initialWindow>
+		<content>SideShow.swf</content>
+		<systemChrome>none</systemChrome>
+		<transparent>true</transparent>
+		<visible>true</visible>
+		<maximizable>true</maximizable>
+		<minimizable>true</minimizable>
+		<resizable>true</resizable>
+	</initialWindow>
+	
+	<icon>
+		<image128x128>icons/Sideshow_128.png</image128x128>
+		<image48x48>icons/Sideshow_48.png</image48x48>
+		<image32x32>icons/Sideshow_32.png</image32x32>
+		<image16x16>icons/Sideshow_16.png</image16x16>
+	</icon>
+	
+	<customUpdateUI>false</customUpdateUI>
+	<allowBrowserInvocation>false</allowBrowserInvocation>
+	<installFolder>Course Vector</installFolder>
+	<programMenuFolder>Course Vector</programMenuFolder>
+
+	<fileTypes>
+		<fileType>
+			<name>SideShow.Video</name>
+			<extension>3gp</extension>
+			<description>3GP</description>
+			<contentType>video/3gpp</contentType>
+			<icon>
+				<image16x16>icons/3GP_16.png</image16x16>
+				<image32x32>icons/3GP_32.png</image32x32>
+				<image48x48>icons/3GP_48.png</image48x48>
+				<image128x128>icons/3GP_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>FileAssociationExample.Image</name>
+			<extension>airpg</extension>
+			<description>AIR application example file (JPEG)</description>
+			<contentType>img/jpeg</contentType>
+		</fileType>
+		
+		
+		<fileType>
+			<name>SideShow.Audio</name>
+			<extension>f4a</extension>
+			<description>Audio for Adobe Flash Player</description>
+			<contentType>audio/mp4</contentType>
+			<icon>
+				<image16x16>icons/F4A_16.png</image16x16>
+				<image32x32>icons/F4A_32.png</image32x32>
+				<image48x48>icons/F4A_48.png</image48x48>
+				<image128x128>icons/F4A_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>SideShow.Audio</name>
+			<extension>f4b</extension>
+			<description>Audio Book for Adobe Flash Player</description>
+			<contentType>audio/mp4</contentType>
+			<icon>
+				<image16x16>icons/F4B_16.png</image16x16>
+				<image32x32>icons/F4B_32.png</image32x32>
+				<image48x48>icons/F4B_48.png</image48x48>
+				<image128x128>icons/F4B_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>SideShow.Video</name>
+			<extension>f4p</extension>
+			<description>Protected Media for Adobe Flash Player</description>
+			<contentType>video/mp4</contentType>
+			<icon>
+				<image16x16>icons/F4P_16.png</image16x16>
+				<image32x32>icons/F4P_32.png</image32x32>
+				<image48x48>icons/F4P_48.png</image48x48>
+				<image128x128>icons/F4P_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>SideShow.Video</name>
+			<extension>f4v</extension>
+			<description>Video for Adobe Flash Player</description>
+			<contentType>video/mp4</contentType>
+			<icon>
+				<image16x16>icons/F4V_16.png</image16x16>
+				<image32x32>icons/F4V_32.png</image32x32>
+				<image48x48>icons/F4V_48.png</image48x48>
+				<image128x128>icons/F4V_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>SideShow.Video</name>
+			<extension>flv</extension>
+			<description>Adobe Flash Video</description>
+			<contentType>video/x-flv</contentType>
+			<icon>
+				<image16x16>icons/FLV_16.png</image16x16>
+				<image32x32>icons/FLV_32.png</image32x32>
+				<image48x48>icons/FLV_48.png</image48x48>
+				<image128x128>icons/FLV_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>SideShow.Video</name>
+			<extension>m4v</extension>
+			<description>MP4 (MPEG-4 Part 14)</description>
+			<contentType>video/mp4</contentType>
+			<icon>
+				<image16x16>icons/M4V_16.png</image16x16>
+				<image32x32>icons/M4V_32.png</image32x32>
+				<image48x48>icons/M4V_48.png</image48x48>
+				<image128x128>icons/M4V_128.png</image128x128>
+			</icon>
+		</fileType>
+		
+		<fileType>
+			<name>SideShow.Video</name>
+			<extension>mp4</extension>
+			<description>MP4 (MPEG-4 Part 14)</description>
+			<contentType>video/mp4</contentType>
+			<icon>
+				<image16x16>icons/MP4_16.png</image16x16>
+				<image32x32>icons/MP4_32.png</image32x32>
+				<image48x48>icons/MP4_48.png</image48x48>
+				<image128x128>icons/MP4_128.png</image128x128>
+			</icon>
+		</fileType>
+	</fileTypes>
+</application>
